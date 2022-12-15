@@ -10,6 +10,7 @@
 #include "resource.h"
 
 #define CLASSNAME TEXT("FolderDeTemple")
+#define WM_SHELLCHANGE (WM_USER + 100)
 
 HWND g_hWnd = NULL;
 HWND g_hListView = NULL;
@@ -20,6 +21,7 @@ HWND g_hStatusBar = NULL;
 TCHAR g_szDir[MAX_PATH] = TEXT("");
 CDropTarget* g_pDropTarget = NULL;
 CDropSource* g_pDropSource = NULL;
+UINT g_nNotifyID = 0;
 
 LPCTSTR doLoadStr(LPCTSTR text)
 {
@@ -122,10 +124,21 @@ static BOOL OnCreate(HWND hwnd, LPCREATESTRUCT lpCreateStruct)
 
     style = WS_CHILD | WS_VISIBLE | SBARS_SIZEGRIP;
     g_hStatusBar = ::CreateStatusWindow(style, doLoadStr(IDS_SELECTITEM), hwnd, 2);
+    if (g_hStatusBar == NULL)
+        return FALSE;
+
+    LPITEMIDLIST pidlDesktop;
+    SHGetSpecialFolderLocation(hwnd, CSIDL_DESKTOP, &pidlDesktop);
+    SHChangeNotifyEntry  entry;
+    entry.pidl = pidlDesktop;
+    entry.fRecursive = TRUE;
+    LONG nEvents = SHCNE_CREATE | SHCNE_DELETE | SHCNE_MKDIR | SHCNE_RMDIR |
+                   SHCNE_RENAMEFOLDER | SHCNE_RENAMEITEM;
+    g_nNotifyID = SHChangeNotifyRegister(hwnd, SHCNRF_ShellLevel | SHCNRF_NewDelivery,
+                                         nEvents, WM_SHELLCHANGE, 1, &entry);
 
     g_pDropTarget = new CDropTarget(hwnd);
     ::RegisterDragDrop(hwnd, g_pDropTarget);
-
     g_pDropSource = new CDropSource();
 
     ::PostMessage(hwnd, WM_SIZE, 0, 0);
@@ -265,6 +278,11 @@ static void OnContextMenu(HWND hwnd, HWND hwndContext, UINT xPos, UINT yPos)
 
 static void OnDestroy(HWND hwnd)
 {
+    if (g_nNotifyID)
+    {
+        SHChangeNotifyDeregister(g_nNotifyID);
+        g_nNotifyID = 0;
+    }
     ::RevokeDragDrop(hwnd);
     if (g_pDropTarget)
     {
@@ -431,6 +449,60 @@ static LRESULT OnNotify(HWND hwnd, int idFrom, LPNMHDR pnmhdr)
     return 0;
 }
 
+static LRESULT OnShellChange(HWND hwnd, WPARAM wParam, LPARAM lParam)
+{
+    LPITEMIDLIST *ppidlAbsolute;
+    LONG lEvent;
+    HANDLE hLock = SHChangeNotification_Lock((HANDLE)wParam, (DWORD)lParam, &ppidlAbsolute, &lEvent);
+    if (!hLock)
+    {
+        MessageBoxA(NULL, "NG", NULL, 0);
+        return 0;
+    }
+
+    TCHAR szPath[MAX_PATH];
+    SHGetPathFromIDList(ppidlAbsolute[0], szPath);
+    PathRemoveFileSpec(szPath);
+
+    if (lstrcmpi(szPath, g_szDir) == 0)
+    {
+        SHGetPathFromIDList(ppidlAbsolute[0], szPath);
+        LPTSTR pszFileName = PathFindFileName(szPath);
+        LV_FINDINFO Find = { LVFI_STRING, pszFileName };
+        INT iItem = ListView_FindItem(g_hListView, -1, &Find);
+        switch (lEvent)
+        {
+        case SHCNE_CREATE:
+        case SHCNE_MKDIR:
+            if (iItem == -1)
+            {
+                DWORD dwAttrs = ((lEvent == SHCNE_MKDIR) ? FILE_ATTRIBUTE_DIRECTORY : 0);
+                SHFILEINFO info;
+                SHGetFileInfo(pszFileName, dwAttrs, &info, sizeof(info),
+                              SHGFI_SYSICONINDEX | SHGFI_USEFILEATTRIBUTES);
+                LV_ITEM item = { LVIF_TEXT | LVIF_IMAGE };
+                item.iItem    = ListView_GetItemCount(g_hListView);
+                item.iSubItem = 0;
+                item.pszText  = pszFileName;
+                item.iImage   = info.iIcon;
+                ListView_InsertItem(g_hListView, &item);
+            }
+            break;
+        case SHCNE_DELETE:
+        case SHCNE_RMDIR:
+            ListView_DeleteItem(g_hListView, iItem);
+            break;
+        case SHCNE_RENAMEFOLDER:
+        case SHCNE_RENAMEITEM:
+            SHGetPathFromIDList(ppidlAbsolute[1], szPath);
+            ListView_SetItemText(g_hListView, iItem, 0, PathFindFileName(szPath));
+            break;
+        }
+    }
+
+    SHChangeNotification_Unlock(hLock);
+    return 0;
+}
 
 LRESULT CALLBACK
 WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
@@ -443,6 +515,8 @@ WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
         HANDLE_MSG(hwnd, WM_CONTEXTMENU, OnContextMenu);
         HANDLE_MSG(hwnd, WM_NOTIFY, OnNotify);
         HANDLE_MSG(hwnd, WM_DESTROY, OnDestroy);
+    case WM_SHELLCHANGE:
+        return OnShellChange(hwnd, wParam, lParam);
     default:
         return DefWindowProc(hwnd, uMsg, wParam, lParam);
     }
