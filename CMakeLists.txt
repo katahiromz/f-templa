@@ -14,6 +14,9 @@ add_definitions(-DUNICODE -D_UNICODE)
 
 ##############################################################################
 
+# libtempla and templa.exe
+add_subdirectory(templa)
+
 # FolderDeTempla.exe
 add_executable(FolderDeTempla WIN32
     FolderDeTempla.cpp

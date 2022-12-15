@@ -1,0 +1,3 @@
+[submodule "templa"]
+	path = templa
+	url = https://github.com/katahiromz/templa.git

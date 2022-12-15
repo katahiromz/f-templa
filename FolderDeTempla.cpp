@@ -4,9 +4,13 @@
 #include <shlwapi.h>
 #include <shlobj.h>
 #include <strsafe.h>
+#include <string>
+#include <vector>
+#include <unordered_map>
 #include <cassert>
 #include "CDropTarget.hpp"
 #include "CDropSource.hpp"
+#include "templa/templa.hpp"
 #include "resource.h"
 
 #define CLASSNAME TEXT("FolderDeTemple")
