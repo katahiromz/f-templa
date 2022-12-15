@@ -193,13 +193,16 @@ BOOL ShowContextMenu(HWND hwnd, INT iItem, INT xPos, INT yPos, UINT uFlags = CMF
     UINT nID;
 
     if (iItem == -1)
-        return FALSE;
-
-    ListView_EnsureVisible(g_hListView, iItem, FALSE);
-
-    ListView_GetItemText(g_hListView, iItem, 0, szItem, _countof(szItem));
-    StringCchCopy(szPath, _countof(szPath), g_szDir);
-    PathAppend(szPath, szItem);
+    {
+        StringCchCopy(szPath, _countof(szPath), g_szDir);
+    }
+    else
+    {
+        ListView_EnsureVisible(g_hListView, iItem, FALSE);
+        ListView_GetItemText(g_hListView, iItem, 0, szItem, _countof(szItem));
+        StringCchCopy(szPath, _countof(szPath), g_szDir);
+        PathAppend(szPath, szItem);
+    }
 
     hr = SHParseDisplayName(szPath, 0, &pidl, 0, 0);
     if (FAILED(hr))
@@ -227,6 +230,14 @@ BOOL ShowContextMenu(HWND hwnd, INT iItem, INT xPos, INT yPos, UINT uFlags = CMF
     {
         assert(0);
         goto Finish;
+    }
+
+    if (iItem == -1)
+    {
+        while (GetMenuItemCount(hMenu) >= 2)
+        {
+            DeleteMenu(hMenu, 0, MF_BYPOSITION);
+        }
     }
 
     if (uFlags & CMF_DEFAULTONLY)
@@ -261,7 +272,10 @@ static void OnContextMenu(HWND hwnd, HWND hwndContext, UINT xPos, UINT yPos)
 {
     INT iItem = ListView_GetNextItem(g_hListView, -1, LVNI_SELECTED);
     if (iItem == -1)
+    {
+        ShowContextMenu(hwnd, iItem, xPos, yPos, CMF_NODEFAULT | CMF_NOVERBS);
         return;
+    }
 
     if (xPos == 0xFFFF && yPos == 0xFFFF)
     {
