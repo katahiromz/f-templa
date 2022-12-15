@@ -115,6 +115,16 @@ static BOOL OnCreate(HWND hwnd, LPCREATESTRUCT lpCreateStruct)
     GetModuleFileName(NULL, szPath, _countof(szPath));
     PathRemoveFileSpec(szPath);
     PathAppend(szPath, TEXT("Templates"));
+    if (!PathIsDirectory(szPath))
+    {
+        PathRemoveFileSpec(szPath);
+        PathAppend(szPath, TEXT("..\\Templates"));
+        if (!PathIsDirectory(szPath))
+        {
+            PathRemoveFileSpec(szPath);
+            PathAppend(szPath, TEXT("..\\Templates"));
+        }
+    }
 
     InitListView(g_hListView, g_hImageList, szPath);
 
