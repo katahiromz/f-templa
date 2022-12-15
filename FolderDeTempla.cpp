@@ -234,7 +234,8 @@ BOOL ShowContextMenu(HWND hwnd, INT iItem, INT xPos, INT yPos, UINT uFlags = CMF
 
     if (iItem == -1)
     {
-        while (GetMenuItemCount(hMenu) >= 2)
+        // properties only
+        while (GetMenuItemCount(hMenu) > 1)
         {
             DeleteMenu(hMenu, 0, MF_BYPOSITION);
         }
@@ -342,7 +343,8 @@ static LRESULT OnNotify(HWND hwnd, int idFrom, LPNMHDR pnmhdr)
     case NM_DBLCLK:
         {
             INT iItem = ListView_GetNextItem(g_hListView, -1, LVNI_SELECTED);
-            ShowContextMenu(hwnd, iItem, 0, 0, CMF_DEFAULTONLY);
+            if (iItem != -1)
+                ShowContextMenu(hwnd, iItem, 0, 0, CMF_DEFAULTONLY);
         }
         break;
 
