@@ -6,6 +6,7 @@
 #include <strsafe.h>
 #include <string>
 #include <vector>
+#include <map>
 #include <unordered_map>
 #include <cassert>
 #include "CDropTarget.hpp"
@@ -15,6 +16,8 @@
 
 #define CLASSNAME TEXT("FolderDeTemple")
 #define WM_SHELLCHANGE (WM_USER + 100)
+
+typedef std::map<std::wstring, std::wstring> MAPPING;
 
 HWND g_hWnd = NULL;
 HWND g_hListView = NULL;
@@ -379,7 +382,7 @@ static void OnDestroy(HWND hwnd)
     PostQuitMessage(0);
 }
 
-static BOOL FindSubst(HWND hwndDlg, const string_t& str, mapping_t& mapping)
+static BOOL FindSubst(HWND hwndDlg, const string_t& str, MAPPING& mapping)
 {
     size_t ich0 = 0;
     for (;;)
@@ -399,7 +402,7 @@ static BOOL FindSubst(HWND hwndDlg, const string_t& str, mapping_t& mapping)
     return FALSE;
 }
 
-static BOOL InitSubstFile(HWND hwnd, HWND hwndDlg, LPCTSTR pszPath, mapping_t& mapping)
+static BOOL InitSubstFile(HWND hwnd, HWND hwndDlg, LPCTSTR pszPath, MAPPING& mapping)
 {
     TEMPLA_FILE file;
     if (!file.load(pszPath))
@@ -408,7 +411,7 @@ static BOOL InitSubstFile(HWND hwnd, HWND hwndDlg, LPCTSTR pszPath, mapping_t& m
     return FindSubst(hwndDlg, file.m_string, mapping);
 }
 
-static BOOL InitSubstDir(HWND hwnd, HWND hwndDlg, LPCTSTR pszPath, mapping_t& mapping)
+static BOOL InitSubstDir(HWND hwnd, HWND hwndDlg, LPCTSTR pszPath, MAPPING& mapping)
 {
     string_t str = PathFindFileName(pszPath);
 
@@ -459,7 +462,7 @@ static void InitSubst(HWND hwnd, INT iItem)
     StringCchCopy(szPath, _countof(szPath), g_szDir);
     PathAppend(szPath, szItem);
 
-    mapping_t mapping;
+    MAPPING mapping;
     if (PathIsDirectory(szPath))
         InitSubstDir(hwnd, hwndDlg, szPath, mapping);
     else
