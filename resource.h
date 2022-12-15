@@ -13,6 +13,16 @@
 #define IDS_APPVERSION                      101
 #define IDS_SELECTITEM                      102
 #define IDS_TYPESUBST                       103
+#define IDS_TODAY                           104
+#define IDS_NOW                             105
+#define IDS_THISYEAR                        106
+#define IDS_USERNAME                        107
+#define IDS_YEAR                            108
+#define IDS_MONTH                           109
+#define IDS_DAY                             110
+#define IDS_HOUR                            111
+#define IDS_MINUTE                          112
+#define IDS_SECOND                          113
 
 #define ID_REFRESH_SUBST                    100
 

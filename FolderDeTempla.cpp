@@ -465,10 +465,94 @@ static void InitSubst(HWND hwnd, INT iItem)
     else
         InitSubstFile(hwnd, hwndDlg, szPath, mapping);
 
+    for (auto& pair : mapping)
+    {
+        if (pair.first == L"{{TODAY}}")
+        {
+            SYSTEMTIME st;
+            ::GetLocalTime(&st);
+            TCHAR szText[128];
+            StringCchPrintf(szText, _countof(szText), TEXT("%04u-%02u-%02u"),
+                st.wYear,
+                st.wMonth,
+                st.wDay);
+            pair.second += szText;
+            continue;
+        }
+        if (pair.first == L"{{NOW}}")
+        {
+            SYSTEMTIME st;
+            ::GetLocalTime(&st);
+            TCHAR szText[128];
+            StringCchPrintf(szText, _countof(szText), TEXT("%02u:%02u:%02u"),
+                st.wHour,
+                st.wMinute,
+                st.wSecond);
+            pair.second += szText;
+            continue;
+        }
+        if (pair.first == L"{{THISYEAR}}")
+        {
+            SYSTEMTIME st;
+            ::GetLocalTime(&st);
+            pair.second = std::to_wstring(st.wYear);
+            continue;
+        }
+        if (pair.first == L"{{USER}}")
+        {
+            TCHAR szUser[MAX_PATH];
+            DWORD cchUser = _countof(szUser);
+            ::GetUserName(szUser, &cchUser);
+            pair.second = szUser;
+            continue;
+        }
+        if (pair.first == doLoadStr(IDS_TODAY))
+        {
+            SYSTEMTIME st;
+            ::GetLocalTime(&st);
+            pair.second = std::to_wstring(st.wYear);
+            pair.second += doLoadStr(IDS_YEAR);
+            pair.second += std::to_wstring(st.wMonth);
+            pair.second += doLoadStr(IDS_MONTH);
+            pair.second += std::to_wstring(st.wDay);
+            pair.second += doLoadStr(IDS_DAY);
+            continue;
+        }
+        if (pair.first == doLoadStr(IDS_NOW))
+        {
+            SYSTEMTIME st;
+            ::GetLocalTime(&st);
+            pair.second = std::to_wstring(st.wHour);
+            pair.second += doLoadStr(IDS_HOUR);
+            pair.second += std::to_wstring(st.wMinute);
+            pair.second += doLoadStr(IDS_MINUTE);
+            pair.second += std::to_wstring(st.wSecond);
+            pair.second += doLoadStr(IDS_SECOND);
+            continue;
+        }
+        if (pair.first == doLoadStr(IDS_THISYEAR))
+        {
+            SYSTEMTIME st;
+            ::GetLocalTime(&st);
+            pair.second = std::to_wstring(st.wYear);
+            pair.second += doLoadStr(IDS_YEAR);
+            continue;
+        }
+        if (pair.first == doLoadStr(IDS_USERNAME))
+        {
+            TCHAR szUser[MAX_PATH];
+            DWORD cchUser = _countof(szUser);
+            ::GetUserName(szUser, &cchUser);
+            pair.second = szUser;
+            continue;
+        }
+    }
+
     UINT id = edt1;
     for (auto& pair : mapping)
     {
-        ::SetDlgItemText(hwndDlg, id, pair.first.c_str());
+        ::SetDlgItemText(hwndDlg, id + 0, pair.first.c_str());
+        ::SetDlgItemText(hwndDlg, id + 1, pair.second.c_str());
         id += 2;
         if (id > edt13)
             break;
@@ -711,7 +795,7 @@ WinMain(HINSTANCE   hInstance,
     DWORD style = WS_OVERLAPPEDWINDOW;
     DWORD exstyle = 0;
     HWND hwnd = ::CreateWindowEx(exstyle, CLASSNAME, doLoadStr(IDS_APPVERSION), style,
-                                 CW_USEDEFAULT, CW_USEDEFAULT, 500, 350,
+                                 CW_USEDEFAULT, CW_USEDEFAULT, 500, 450,
                                  NULL, NULL, hInstance, NULL);
     if (!hwnd)
     {

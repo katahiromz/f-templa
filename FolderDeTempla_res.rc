@@ -49,31 +49,31 @@ FONT 9, "MS UI Gothic"
 {
     CTEXT "☆ 置き換え項目 ☆", -1, 5, 10, 85, 14
     CONTROL "{{名前}}", edt1, "EDIT", ES_AUTOHSCROLL | WS_BORDER | WS_TABSTOP, 5, 30, 60, 14
-    LTEXT "→", stc1, 5, 45, 10, 14, SS_CENTERIMAGE | SS_NOTIFY
+    LTEXT "→", stc1, 5, 45, 10, 14, SS_CENTERIMAGE | SS_NOTIFY | NOT WS_GROUP
     EDITTEXT edt2, 15, 45, 60, 14, ES_AUTOHSCROLL
     PUSHBUTTON "▼", psh1, 80, 45, 12, 14
     EDITTEXT edt3, 5, 70, 60, 14, ES_AUTOHSCROLL
-    LTEXT "→", stc2, 5, 85, 10, 14, SS_CENTERIMAGE | SS_NOTIFY
+    LTEXT "→", stc2, 5, 85, 10, 14, SS_CENTERIMAGE | SS_NOTIFY | NOT WS_GROUP
     EDITTEXT edt4, 15, 85, 60, 14, ES_AUTOHSCROLL
     PUSHBUTTON "▼", psh2, 80, 85, 12, 14
     EDITTEXT edt5, 5, 110, 60, 14, ES_AUTOHSCROLL
-    LTEXT "→", stc3, 5, 125, 10, 14, SS_CENTERIMAGE | SS_NOTIFY
+    LTEXT "→", stc3, 5, 125, 10, 14, SS_CENTERIMAGE | SS_NOTIFY | NOT WS_GROUP
     EDITTEXT edt6, 15, 125, 60, 14, ES_AUTOHSCROLL
     PUSHBUTTON "▼", psh3, 80, 125, 12, 14
     EDITTEXT edt7, 5, 150, 60, 14, ES_AUTOHSCROLL
-    LTEXT "→", stc4, 5, 165, 10, 14, SS_CENTERIMAGE | SS_NOTIFY
+    LTEXT "→", stc4, 5, 165, 10, 14, SS_CENTERIMAGE | SS_NOTIFY | NOT WS_GROUP
     EDITTEXT edt8, 15, 165, 60, 14, ES_AUTOHSCROLL
     PUSHBUTTON "▼", psh4, 80, 165, 12, 14
     EDITTEXT edt9, 5, 190, 60, 14, ES_AUTOHSCROLL
-    LTEXT "→", stc5, 5, 205, 10, 14, SS_CENTERIMAGE | SS_NOTIFY
+    LTEXT "→", stc5, 5, 205, 10, 14, SS_CENTERIMAGE | SS_NOTIFY | NOT WS_GROUP
     EDITTEXT edt10, 15, 205, 60, 14, ES_AUTOHSCROLL
     PUSHBUTTON "▼", psh5, 80, 205, 12, 14
     EDITTEXT edt11, 5, 230, 60, 14, ES_AUTOHSCROLL
-    LTEXT "→", stc6, 5, 245, 10, 14, SS_CENTERIMAGE | SS_NOTIFY
+    LTEXT "→", stc6, 5, 245, 10, 14, SS_CENTERIMAGE | SS_NOTIFY | NOT WS_GROUP
     EDITTEXT edt12, 15, 245, 60, 14, ES_AUTOHSCROLL
     PUSHBUTTON "▼", psh6, 80, 245, 12, 14
     EDITTEXT edt13, 5, 270, 60, 14, ES_AUTOHSCROLL
-    LTEXT "→", stc7, 5, 285, 10, 14, SS_CENTERIMAGE | SS_NOTIFY
+    LTEXT "→", stc7, 5, 285, 10, 14, SS_CENTERIMAGE | SS_NOTIFY | NOT WS_GROUP
     EDITTEXT edt14, 15, 285, 60, 14, ES_AUTOHSCROLL
     PUSHBUTTON "▼", psh7, 80, 285, 12, 14
 }
@@ -83,7 +83,7 @@ CAPTION "文字列の入力"
 STYLE DS_CENTER | DS_MODALFRAME | WS_POPUPWINDOW | WS_CAPTION
 FONT 9, "MS UI Gothic"
 {
-    LTEXT "文字列を入力して下さい:", stc1, 5, 5, 160, 30, SS_CENTERIMAGE
+    LTEXT "文字列を入力して下さい:", stc1, 5, 5, 160, 30, SS_CENTERIMAGE | NOT WS_GROUP
     EDITTEXT edt1, 5, 40, 160, 15
     DEFPUSHBUTTON "OK", IDOK, 40, 60, 60, 15
     PUSHBUTTON "キャンセル", IDCANCEL, 105, 60, 60, 15
@@ -98,6 +98,16 @@ STRINGTABLE
     IDS_APPVERSION, "フォルダでテンプレート Ver. 0.0"
     IDS_SELECTITEM, "説明内容をお読みになり、項目を選択して下さい。"
     IDS_TYPESUBST, "置き換え項目を入力してファイルを任意の場所にドロップして下さい。"
+    IDS_TODAY, "{{今日}}"
+    IDS_NOW, "{{今}}"
+    IDS_THISYEAR, "{{今年}}"
+    IDS_USERNAME, "{{ユーザー名}}"
+    IDS_YEAR, "年"
+    IDS_MONTH, "月"
+    IDS_DAY, "日"
+    IDS_HOUR, "時"
+    IDS_MINUTE, "分"
+    IDS_SECOND, "秒"
 }
 
 //////////////////////////////////////////////////////////////////////////////
