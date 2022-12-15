@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
+   width="85.599998mm"
+   height="53.98mm"
+   viewBox="0 0 85.599998 53.98"
+   version="1.1"
+   id="svg5"
+   inkscape:version="1.1.2 (b8e25be833, 2022-02-05)"
+   sodipodi:docname="{{氏名}}さんの名刺{{日付}}.svg"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <sodipodi:namedview
+     id="namedview7"
+     pagecolor="#ffffff"
+     bordercolor="#666666"
+     borderopacity="1.0"
+     inkscape:pageshadow="2"
+     inkscape:pageopacity="0.0"
+     inkscape:pagecheckerboard="0"
+     inkscape:document-units="mm"
+     showgrid="false"
+     inkscape:zoom="0.84987374"
+     inkscape:cx="386.528"
+     inkscape:cy="52.949042"
+     inkscape:window-width="1366"
+     inkscape:window-height="705"
+     inkscape:window-x="-8"
+     inkscape:window-y="-8"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="layer1" />
+  <defs
+     id="defs2" />
+  <g
+     inkscape:label="Layer 1"
+     inkscape:groupmode="layer"
+     id="layer1">
+    <text
+       xml:space="preserve"
+       style="font-style:normal;font-weight:normal;font-size:4.93889px;line-height:1.25;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.264583"
+       x="6.2264156"
+       y="9.9622641"
+       id="text957"><tspan
+         sodipodi:role="line"
+         id="tspan955"
+         style="font-size:4.93889px;stroke-width:0.264583"
+         x="6.2264156"
+         y="9.9622641">{{役職}}</tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-style:normal;font-weight:normal;font-size:7.76111px;line-height:1.25;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.264583"
+       x="14.373405"
+       y="21.83131"
+       id="text957-2"><tspan
+         sodipodi:role="line"
+         id="tspan955-6"
+         style="font-size:7.76111px;stroke-width:0.264583"
+         x="14.373405"
+         y="21.83131">{{氏名}}</tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-style:normal;font-weight:normal;font-size:5.64444px;line-height:1.25;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.264583"
+       x="6.2544713"
+       y="38.549919"
+       id="text957-2-8"><tspan
+         sodipodi:role="line"
+         id="tspan955-6-1"
+         style="font-size:5.64444px;stroke-width:0.264583"
+         x="6.2544713"
+         y="38.549919">{{住所}}</tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-style:normal;font-weight:normal;font-size:5.64444px;line-height:1.25;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.264583"
+       x="6.2544718"
+       y="46.043663"
+       id="text957-2-8-0"><tspan
+         sodipodi:role="line"
+         id="tspan955-6-1-0"
+         style="font-size:5.64444px;stroke-width:0.264583"
+         x="6.2544718"
+         y="46.043663">{{電話番号}}</tspan></text>
+    <rect
+       style="fill:#999999;fill-opacity:1;stroke:#ffffff;stroke-width:1.32292;paint-order:fill markers stroke;stop-color:#000000"
+       id="rect9550"
+       width="80.63208"
+       height="3.4245281"
+       x="2.4839592"
+       y="48.877357" />
+    <rect
+       style="fill:#999999;fill-opacity:1;stroke:#ffffff;stroke-width:1.32292;paint-order:fill markers stroke;stop-color:#000000"
+       id="rect9550-0"
+       width="80.63208"
+       height="3.4245281"
+       x="2.4839592"
+       y="26.306602" />
+  </g>
+</svg>
