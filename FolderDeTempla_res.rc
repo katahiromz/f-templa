@@ -96,7 +96,7 @@ STRINGTABLE
 {
     IDS_APPNAME, "フォルダでテンプレート"
     IDS_APPVERSION, "フォルダでテンプレート Ver. 0.0"
-    IDS_SELECTITEM, "項目を選択して下さい。"
+    IDS_SELECTITEM, "説明内容をお読みになり、項目を選択して下さい。"
     IDS_TYPESUBST, "置き換え項目を入力してファイルを任意の場所にドロップして下さい。"
 }
 
