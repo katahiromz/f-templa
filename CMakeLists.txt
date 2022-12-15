@@ -28,6 +28,6 @@ add_executable(FolderDeTempla WIN32
     CDropTarget.cpp
     CDropSource.cpp
     FolderDeTempla_res.rc)
-target_link_libraries(FolderDeTempla comctl32 shlwapi)
+target_link_libraries(FolderDeTempla comctl32 shlwapi libtempla)
 
 ##############################################################################

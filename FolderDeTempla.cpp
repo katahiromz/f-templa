@@ -82,10 +82,42 @@ static void InitListView(HWND hListView, HIMAGELIST hImageList, LPCTSTR pszDir)
 }
 
 static INT_PTR CALLBACK
-DialogProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
+Dialog1Proc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
     switch (uMsg)
     {
+    }
+    return 0;
+}
+
+static INT_PTR CALLBACK
+Dialog2Proc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
+{
+    switch (uMsg)
+    {
+    case WM_COMMAND:
+        switch (LOWORD(wParam))
+        {
+        case ID_REFRESH_SUBST:
+            for (UINT id = edt1; id <= edt14; ++id)
+                ::SetDlgItemText(hwnd, id, NULL);
+            break;
+        case stc1:
+        case stc2:
+        case stc3:
+        case stc4:
+        case stc5:
+        case stc6:
+        case stc7:
+            {
+                UINT id = edt2 + (LOWORD(wParam) - stc1) * 2;
+                HWND hwndEdit = ::GetDlgItem(hwnd, id);
+                Edit_SetSel(hwndEdit, 0, -1);
+                ::SetFocus(hwndEdit);
+            }
+            break;
+        }
+        break;
     }
     return 0;
 }
@@ -128,12 +160,14 @@ static BOOL OnCreate(HWND hwnd, LPCREATESTRUCT lpCreateStruct)
 
     InitListView(g_hListView, g_hImageList, szPath);
 
-    g_hwndDialogs[0] = CreateDialog(GetModuleHandle(NULL), MAKEINTRESOURCE(IDD_TOP), hwnd, DialogProc);
-    if (!g_hwndDialogs[0])
-        return FALSE;
-    g_hwndDialogs[1] = CreateDialog(GetModuleHandle(NULL), MAKEINTRESOURCE(IDD_SUBST), hwnd, DialogProc);
-    if (!g_hwndDialogs[1])
-        return FALSE;
+    static const UINT ids[] = { IDD_TOP, IDD_SUBST };
+    DLGPROC procs[] = { Dialog1Proc, Dialog2Proc };
+    for (UINT i = 0; i < _countof(g_hwndDialogs); ++i)
+    {
+        g_hwndDialogs[i] = CreateDialog(GetModuleHandle(NULL), MAKEINTRESOURCE(ids[i]), hwnd, procs[i]);
+        if (!g_hwndDialogs[i])
+            return FALSE;
+    }
     ::ShowWindow(g_hwndDialogs[g_iDialog], SW_SHOWNOACTIVATE);
 
     style = WS_CHILD | WS_VISIBLE | SBARS_SIZEGRIP;
@@ -333,18 +367,112 @@ static void OnDestroy(HWND hwnd)
         ::DestroyWindow(g_hListView);
         g_hListView = NULL;
     }
-    if (g_hwndDialogs[0])
+    for (UINT i = 0; i < _countof(g_hwndDialogs); ++i)
     {
-        ::DestroyWindow(g_hwndDialogs[0]);
-        g_hwndDialogs[0] = NULL;
-    }
-    if (g_hwndDialogs[1])
-    {
-        ::DestroyWindow(g_hwndDialogs[1]);
-        g_hwndDialogs[1] = NULL;
+        if (g_hwndDialogs[i])
+        {
+            ::DestroyWindow(g_hwndDialogs[i]);
+            g_hwndDialogs[i] = NULL;
+        }
     }
     OleUninitialize();
     PostQuitMessage(0);
+}
+
+static BOOL FindSubst(HWND hwndDlg, const string_t& str, mapping_t& mapping)
+{
+    size_t ich0 = 0;
+    for (;;)
+    {
+        size_t ich = str.find(L"{{", ich0);
+        if (ich == str.npos)
+            return TRUE;
+        ich += 2;
+        ich0 = str.find(L"}}", ich);
+        if (ich0 == str.npos)
+            return TRUE;
+        auto tag = str.substr(ich, ich0 - ich);
+        tag = L"{{" + tag + L"}}";
+        mapping[tag] = L"";
+    }
+
+    return FALSE;
+}
+
+static BOOL InitSubstFile(HWND hwnd, HWND hwndDlg, LPCTSTR pszPath, mapping_t& mapping)
+{
+    TEMPLA_FILE file;
+    if (!file.load(pszPath))
+        return TRUE;
+
+    return FindSubst(hwndDlg, file.m_string, mapping);
+}
+
+static BOOL InitSubstDir(HWND hwnd, HWND hwndDlg, LPCTSTR pszPath, mapping_t& mapping)
+{
+    string_t str = PathFindFileName(pszPath);
+
+    FindSubst(hwndDlg, str, mapping);
+
+    TCHAR szSpec[MAX_PATH];
+    StringCchCopy(szSpec, _countof(szSpec), pszPath);
+    PathAppend(szSpec, L"*");
+    WIN32_FIND_DATA find;
+    HANDLE hFind = FindFirstFile(szSpec, &find);
+    if (hFind != INVALID_HANDLE_VALUE)
+    {
+        do
+        {
+            auto filename = find.cFileName;
+            if (filename[0] == L'.')
+            {
+                if (filename[1] == 0)
+                    continue;
+                if (filename[1] == L'.' && filename[2] == 0)
+                    continue;
+            }
+
+            FindSubst(hwndDlg, filename, mapping);
+
+            string_t path = pszPath;
+            path += L'\\';
+            path += filename;
+
+            if (find.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
+                InitSubstDir(hwnd, hwndDlg, path.c_str(), mapping);
+            else
+                InitSubstFile(hwnd, hwndDlg, path.c_str(), mapping);
+        } while (FindNextFile(hFind, &find));
+        FindClose(hFind);
+    }
+
+    return TRUE;
+}
+
+static void InitSubst(HWND hwnd, INT iItem)
+{
+    HWND hwndDlg = g_hwndDialogs[g_iDialog];
+    ::SendMessage(hwndDlg, WM_COMMAND, ID_REFRESH_SUBST, 0);
+
+    TCHAR szItem[MAX_PATH], szPath[MAX_PATH];
+    ListView_GetItemText(g_hListView, iItem, 0, szItem, _countof(szItem));
+    StringCchCopy(szPath, _countof(szPath), g_szDir);
+    PathAppend(szPath, szItem);
+
+    mapping_t mapping;
+    if (PathIsDirectory(szPath))
+        InitSubstDir(hwnd, hwndDlg, szPath, mapping);
+    else
+        InitSubstFile(hwnd, hwndDlg, szPath, mapping);
+
+    UINT id = edt1;
+    for (auto& pair : mapping)
+    {
+        ::SetDlgItemText(hwndDlg, id, pair.first.c_str());
+        id += 2;
+        if (id > edt13)
+            break;
+    }
 }
 
 static LRESULT OnNotify(HWND hwnd, int idFrom, LPNMHDR pnmhdr)
@@ -405,6 +533,7 @@ static LRESULT OnNotify(HWND hwnd, int idFrom, LPNMHDR pnmhdr)
             {
                 g_iDialog = 1;
                 ::SendMessage(g_hStatusBar, SB_SETTEXT, 0 | 0, (LPARAM)doLoadStr(IDS_TYPESUBST));
+                InitSubst(hwnd, iItem);
             }
             else
             {
@@ -415,6 +544,7 @@ static LRESULT OnNotify(HWND hwnd, int idFrom, LPNMHDR pnmhdr)
             ::ShowWindow(g_hwndDialogs[0], SW_HIDE);
             ::ShowWindow(g_hwndDialogs[1], SW_HIDE);
             ::ShowWindow(g_hwndDialogs[g_iDialog], SW_SHOWNOACTIVATE);
+
             ::PostMessage(hwnd, WM_SIZE, 0, 0);
         }
         break;
