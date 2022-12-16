@@ -488,8 +488,21 @@ static void OnContextMenu(HWND hwnd, HWND hwndContext, UINT xPos, UINT yPos)
     ShowContextMenu(hwnd, iItem, xPos, yPos, CMF_EXPLORE | CMF_NODEFAULT);
 }
 
+static void DeleteTempDir(HWND hwnd)
+{
+    if (g_temp_dir[0])
+    {
+        SHFILEOPSTRUCT op = { hwnd, FO_DELETE, g_temp_dir };
+        op.fFlags = FOF_NOCONFIRMATION | FOF_SILENT;
+        SHFileOperation(&op);
+        ZeroMemory(g_temp_dir, sizeof(g_temp_dir));
+    }
+}
+
 static void OnDestroy(HWND hwnd)
 {
+    DeleteTempDir(hwnd);
+
     if (g_nNotifyID)
     {
         SHChangeNotifyDeregister(g_nNotifyID);
@@ -732,13 +745,7 @@ mapping_t GetMapping(void)
 
 BOOL DoTempla(HWND hwnd, LPTSTR pszPath)
 {
-    if (g_temp_dir[0])
-    {
-        SHFILEOPSTRUCT op = { hwnd, FO_DELETE, g_temp_dir };
-        op.fFlags = FOF_NOCONFIRMATION | FOF_SILENT;
-        SHFileOperation(&op);
-        ZeroMemory(g_temp_dir, sizeof(g_temp_dir));
-    }
+    DeleteTempDir(hwnd);
 
     string_t filename = PathFindFileName(pszPath);
 
