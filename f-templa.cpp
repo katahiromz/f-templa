@@ -214,7 +214,8 @@ static void Dialog2_FixScrollPos(HWND hwnd)
     ::GetScrollInfo(hwnd, SB_VERT, &si);
 
     INT nPos = std::max(si.nPos, si.nMin);
-    nPos = std::min(nPos, (INT)(si.nMax - (si.nPage - 1)));
+    INT nMax = si.nMax - (si.nPage - 1);
+    nPos = std::min(nPos, nMax);
     ::SetScrollPos(hwnd, SB_VERT, nPos, TRUE);
     Dialog2_ScrollClient(hwnd, SB_VERT, nPos);
 }
