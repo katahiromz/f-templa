@@ -102,6 +102,11 @@ CDropTarget::DragLeave()
 
 extern TCHAR g_szRootDir[MAX_PATH];
 
+inline LPBYTE byte_cast(LPIDA pIDA, UINT p)
+{
+    return reinterpret_cast<LPBYTE>(pIDA) + pIDA->aoffset[p];
+}
+
 STDMETHODIMP
 CDropTarget::Drop(IDataObject *pDataObj, DWORD grfKeyState, POINTL pt, DWORD *pdwEffect)
 {
@@ -141,18 +146,32 @@ CDropTarget::Drop(IDataObject *pDataObj, DWORD grfKeyState, POINTL pt, DWORD *pd
         }
     }
 
-    LPIDA lpIda = (LPIDA)GlobalLock(medium.hGlobal);
-    for (UINT i = 0; i < lpIda->cidl; ++i)
+    LPIDA pIDA = (LPIDA)GlobalLock(medium.hGlobal);
+
+    PIDLIST_ABSOLUTE pidl_root =
+        reinterpret_cast<PIDLIST_ABSOLUTE>(byte_cast(pIDA, 0));
+
+    for (UINT i = 1; i <= pIDA->cidl; ++i)
     {
-        PIDLIST_ABSOLUTE pidl = (PIDLIST_ABSOLUTE)(((LPBYTE)lpIda) + lpIda->aoffset[1 + i]);
-        TCHAR szSrcFilePath[MAX_PATH];
+        PIDLIST_RELATIVE pidl_file = 
+            reinterpret_cast<PIDLIST_RELATIVE>(byte_cast(pIDA, i));
+
+        PIDLIST_ABSOLUTE pidl = ::ILCombine(pidl_root, pidl_file);
+
+        TCHAR szSrcFilePath[MAX_PATH + 1], szDestFilePath[MAX_PATH + 1];
+        ZeroMemory(szSrcFilePath, sizeof(szSrcFilePath));
+        ZeroMemory(szDestFilePath, sizeof(szDestFilePath));
+
         SHGetPathFromIDList(pidl, szSrcFilePath);
 
-        TCHAR szDestFilePath[MAX_PATH];
         StringCchCopy(szDestFilePath, _countof(szDestFilePath), g_szRootDir);
         PathAppend(szDestFilePath, PathFindFileName(szSrcFilePath));
 
-        MessageBox(NULL, szDestFilePath, szSrcFilePath, 0);
+        SHFILEOPSTRUCT op = { m_hwnd, FO_COPY, szSrcFilePath, szDestFilePath };
+        op.fFlags = FOF_ALLOWUNDO | FOF_RENAMEONCOLLISION;
+        ::SHFileOperation(&op);
+
+        CoTaskMemFree(pidl);
     }
 
     GlobalUnlock(medium.hGlobal);

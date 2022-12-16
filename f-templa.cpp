@@ -494,7 +494,7 @@ static void DeleteTempDir(HWND hwnd)
     {
         SHFILEOPSTRUCT op = { hwnd, FO_DELETE, g_temp_dir };
         op.fFlags = FOF_NOCONFIRMATION | FOF_SILENT;
-        SHFileOperation(&op);
+        ::SHFileOperation(&op);
         ZeroMemory(g_temp_dir, sizeof(g_temp_dir));
     }
 }
@@ -884,20 +884,22 @@ static LRESULT OnNotify(HWND hwnd, int idFrom, LPNMHDR pnmhdr)
                 if (iItem != -1)
                 {
                     TCHAR szPath[MAX_PATH], szItem[MAX_PATH];
-                    ListView_GetItemText(g_hListView, iItem, 0, szItem, _countof(szItem));
-
                     ZeroMemory(szPath, sizeof(szPath));
+
                     StringCchCopy(szPath, _countof(szPath), g_szRootDir);
+                    ListView_GetItemText(g_hListView, iItem, 0, szItem, _countof(szItem));
                     PathAppend(szPath, szItem);
 
                     if (::GetKeyState(VK_SHIFT) < 0)
                     {
-                        ::DeleteFile(szPath);
+                        if (!::DeleteFile(szPath))
+                        {
+                            // TODO: error message
+                        }
                     }
                     else
                     {
-                        SHFILEOPSTRUCT op = { hwnd, FO_DELETE };
-                        op.pFrom = szPath;
+                        SHFILEOPSTRUCT op = { hwnd, FO_DELETE, szPath };
                         op.fFlags = FOF_ALLOWUNDO;
                         ::SHFileOperation(&op);
                     }
@@ -945,7 +947,7 @@ static LRESULT OnShellChange(HWND hwnd, WPARAM wParam, LPARAM lParam)
     HANDLE hLock = SHChangeNotification_Lock((HANDLE)wParam, (DWORD)lParam, &ppidlAbsolute, &lEvent);
     if (!hLock)
     {
-        MessageBoxA(NULL, "NG", NULL, 0);
+        assert(0);
         return 0;
     }
 
