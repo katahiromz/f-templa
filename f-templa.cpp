@@ -8,6 +8,7 @@
 #include <vector>
 #include <map>
 #include <unordered_map>
+#include <algorithm>
 #include <cassert>
 #include "CDropTarget.hpp"
 #include "CDropSource.hpp"
@@ -16,6 +17,8 @@
 
 #define CLASSNAME TEXT("FolderDeTemple")
 #define WM_SHELLCHANGE (WM_USER + 100)
+#undef min
+#undef max
 
 typedef std::map<std::wstring, std::wstring> MAPPING;
 
@@ -29,6 +32,7 @@ TCHAR g_szDir[MAX_PATH] = TEXT("");
 CDropTarget* g_pDropTarget = NULL;
 CDropSource* g_pDropSource = NULL;
 UINT g_nNotifyID = 0;
+UINT g_cyDialog2 = 0;
 
 LPCTSTR doLoadStr(LPCTSTR text)
 {
@@ -87,10 +91,120 @@ static void InitListView(HWND hListView, HIMAGELIST hImageList, LPCTSTR pszDir)
 static INT_PTR CALLBACK
 Dialog1Proc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
-    switch (uMsg)
-    {
-    }
     return 0;
+}
+
+static BOOL Dialog2_OnInitDialog(HWND hwnd, HWND hwndFocus, LPARAM lParam)
+{
+    RECT rc;
+    ::GetClientRect(hwnd, &rc);
+    g_cyDialog2 = rc.bottom - rc.top;
+    return TRUE;
+}
+
+static void Dialog2_OnCommand(HWND hwnd, int id, HWND hwndCtl, UINT codeNotify)
+{
+    switch (id)
+    {
+    case ID_REFRESH_SUBST:
+        for (UINT id = edt1; id <= edt14; ++id)
+            ::SetDlgItemText(hwnd, id, NULL);
+        break;
+    case stc1:
+    case stc2:
+    case stc3:
+    case stc4:
+    case stc5:
+    case stc6:
+    case stc7:
+        {
+            UINT id = edt2 + (id - stc1) * 2;
+            HWND hwndEdit = ::GetDlgItem(hwnd, id);
+            Edit_SetSel(hwndEdit, 0, -1);
+            ::SetFocus(hwndEdit);
+        }
+        break;
+    }
+}
+
+static void Dialog2_ScrollClient(HWND hwnd, INT bar, INT pos)
+{
+    static INT s_xPrev = 1;
+    static INT s_yPrev = 1;
+
+    INT cx = 0, cy = 0;
+    INT& delta = (bar == SB_HORZ ? cx : cy);
+    INT& prev = (bar == SB_HORZ ? s_xPrev : s_yPrev);
+
+    delta = prev - pos;
+    prev = pos;
+
+    if (cx || cy)
+    {
+        ::ScrollWindow(hwnd, cx, cy, NULL, NULL);
+    }
+}
+
+static INT Dialog2_GetVScrollPos(HWND hwnd, UINT code)
+{
+    SCROLLINFO si = { sizeof(si), SIF_PAGE | SIF_POS | SIF_RANGE | SIF_TRACKPOS};
+    GetScrollInfo(hwnd, SB_VERT, &si);
+
+    INT nPos = -1;
+    INT nMin = si.nMin;
+    INT nMax = si.nMax - (si.nPage - 1);
+
+    switch (code)
+    {
+    case SB_LINEUP:
+        nPos = std::max(si.nPos - 1, nMin);
+        break;
+
+    case SB_LINEDOWN:
+        nPos = std::min(si.nPos + 1, nMax);
+        break;
+
+    case SB_PAGEUP:
+        nPos = std::max(si.nPos - (int)si.nPage, nMin);
+        break;
+
+    case SB_PAGEDOWN:
+        nPos = std::min(si.nPos + (int)si.nPage, nMax);
+        break;
+
+    case SB_THUMBPOSITION:
+        break;
+
+    case SB_THUMBTRACK:
+        nPos = si.nTrackPos;
+        break;
+
+    case SB_TOP:
+        nPos = nMin;
+        break;
+
+    case SB_BOTTOM:
+        nPos = nMax;
+        break;
+
+    case SB_ENDSCROLL:
+        break;
+    }
+
+    return nPos;
+}
+
+static void Dialog2_OnVScroll(HWND hwnd, HWND hwndCtl, UINT code, int pos)
+{
+    if (!(GetWindowLong(hwnd, GWL_STYLE) & WS_VSCROLL))
+        return;
+
+    INT nPos = Dialog2_GetVScrollPos(hwnd, code);
+    if (nPos == -1)
+        return;
+
+    ::SetScrollPos(hwnd, SB_VERT, nPos, TRUE);
+    Dialog2_ScrollClient(hwnd, SB_VERT, nPos);
 }
 
 static INT_PTR CALLBACK
@@ -98,29 +212,9 @@ Dialog2Proc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
     switch (uMsg)
     {
-    case WM_COMMAND:
-        switch (LOWORD(wParam))
-        {
-        case ID_REFRESH_SUBST:
-            for (UINT id = edt1; id <= edt14; ++id)
-                ::SetDlgItemText(hwnd, id, NULL);
-            break;
-        case stc1:
-        case stc2:
-        case stc3:
-        case stc4:
-        case stc5:
-        case stc6:
-        case stc7:
-            {
-                UINT id = edt2 + (LOWORD(wParam) - stc1) * 2;
-                HWND hwndEdit = ::GetDlgItem(hwnd, id);
-                Edit_SetSel(hwndEdit, 0, -1);
-                ::SetFocus(hwndEdit);
-            }
-            break;
-        }
-        break;
+        HANDLE_MSG(hwnd, WM_INITDIALOG, Dialog2_OnInitDialog);
+        HANDLE_MSG(hwnd, WM_COMMAND, Dialog2_OnCommand);
+        HANDLE_MSG(hwnd, WM_VSCROLL, Dialog2_OnVScroll);
     }
     return 0;
 }
@@ -211,10 +305,30 @@ static void OnSize(HWND hwnd, UINT state, int cx, int cy)
     INT cyStatusBar = rc.bottom - rc.top;
 
     ::GetClientRect(hwnd, &rc);
+
     rc.bottom -= cyStatusBar;
-    ::MoveWindow(g_hwndDialogs[g_iDialog], 0, 0, cxDialog, rc.bottom, TRUE);
+    INT cyDialog = rc.bottom - rc.top;
+
+    ::MoveWindow(g_hwndDialogs[g_iDialog], 0, 0, cxDialog, cyDialog, TRUE);
     rc.left += cxDialog;
     ::MoveWindow(g_hListView, rc.left, rc.top, rc.right - rc.left, rc.bottom - rc.top, TRUE);
+
+    if (g_iDialog == 1)
+    {
+        if (g_cyDialog2 >= cyDialog)
+        {
+            SCROLLINFO si = { sizeof(si), SIF_PAGE | SIF_RANGE };
+            si.nMin = 0;
+            si.nMax = g_cyDialog2;
+            si.nPage = cyDialog;
+            SetScrollInfo(g_hwndDialogs[1], SB_VERT, &si, TRUE);
+            ShowScrollBar(g_hwndDialogs[1], SB_VERT, TRUE);
+        }
+        else
+        {
+            ShowScrollBar(g_hwndDialogs[1], SB_VERT, FALSE);
+        }
+    }
 }
 
 HRESULT ExecuteContextCommand(HWND hwnd, IContextMenu *pContextMenu, UINT nCmd)
