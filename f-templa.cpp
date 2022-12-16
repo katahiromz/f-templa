@@ -109,19 +109,30 @@ static void Dialog2_OnCommand(HWND hwnd, int id, HWND hwndCtl, UINT codeNotify)
     switch (id)
     {
     case ID_REFRESH_SUBST:
-        for (UINT id = edt1; id <= edt14; ++id)
+        for (UINT id = IDC_FROM_00; id <= IDC_FROM_15; ++id)
+            ::SetDlgItemText(hwnd, id, NULL);
+        for (UINT id = IDC_TO_00; id <= IDC_TO_15; ++id)
             ::SetDlgItemText(hwnd, id, NULL);
         break;
-    case stc1:
-    case stc2:
-    case stc3:
-    case stc4:
-    case stc5:
-    case stc6:
-    case stc7:
+    case IDC_RARROW_00:
+    case IDC_RARROW_01:
+    case IDC_RARROW_02:
+    case IDC_RARROW_03:
+    case IDC_RARROW_04:
+    case IDC_RARROW_05:
+    case IDC_RARROW_06:
+    case IDC_RARROW_07:
+    case IDC_RARROW_08:
+    case IDC_RARROW_09:
+    case IDC_RARROW_10:
+    case IDC_RARROW_11:
+    case IDC_RARROW_12:
+    case IDC_RARROW_13:
+    case IDC_RARROW_14:
+    case IDC_RARROW_15:
         if (codeNotify == STN_CLICKED)
         {
-            UINT nEditID = edt2 + (id - stc1) * 2;
+            UINT nEditID = IDC_TO_00 + (id - IDC_RARROW_00);
             HWND hwndEdit = ::GetDlgItem(hwnd, nEditID);
             assert(hwndEdit);
             Edit_SetSel(hwndEdit, 0, -1);
@@ -736,13 +747,13 @@ static void InitSubst(HWND hwnd, INT iItem)
         }
     }
 
-    UINT id = edt1;
+    UINT i = 0;
     for (auto& pair : mapping)
     {
-        ::SetDlgItemText(hwndDlg, id + 0, pair.first.c_str());
-        ::SetDlgItemText(hwndDlg, id + 1, pair.second.c_str());
-        id += 2;
-        if (id > edt13)
+        ::SetDlgItemText(hwndDlg, IDC_FROM_00 + i, pair.first.c_str());
+        ::SetDlgItemText(hwndDlg, IDC_TO_00 + i, pair.second.c_str());
+        ++i;
+        if (i >= 16)
             break;
     }
 }
@@ -752,12 +763,12 @@ mapping_t GetMapping(void)
     HWND hwndDlg = g_hwndDialogs[1];
 
     mapping_t mapping;
-    for (UINT id = edt1; id <= edt13; id += 2)
+    for (UINT i = 0; i < 16; ++i)
     {
         TCHAR szKey[128];
         TCHAR szValue[1024];
-        ::GetDlgItemText(hwndDlg, id + 0, szKey, _countof(szKey));
-        ::GetDlgItemText(hwndDlg, id + 1, szValue, _countof(szValue));
+        ::GetDlgItemText(hwndDlg, IDC_FROM_00 + i, szKey, _countof(szKey));
+        ::GetDlgItemText(hwndDlg, IDC_TO_00 + i, szValue, _countof(szValue));
         StrTrim(szKey, TEXT(" \t\r\n\x3000"));
         if (szKey[0] == 0)
             continue;
