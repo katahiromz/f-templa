@@ -28,7 +28,8 @@ HIMAGELIST g_hImageList = NULL;
 INT g_iDialog = 0;
 HWND g_hwndDialogs[2] = { NULL };
 HWND g_hStatusBar = NULL;
-TCHAR g_szDir[MAX_PATH] = TEXT("");
+TCHAR g_szRootDir[MAX_PATH] = TEXT("");
+TCHAR g_szTempDir[MAX_PATH + 1] = TEXT("");
 CDropTarget* g_pDropTarget = NULL;
 CDropSource* g_pDropSource = NULL;
 UINT g_nNotifyID = 0;
@@ -53,9 +54,9 @@ static void InitListView(HWND hListView, HIMAGELIST hImageList, LPCTSTR pszDir)
 {
     TCHAR spec[MAX_PATH];
 
-    GetFullPathName(pszDir, _countof(g_szDir), g_szDir, NULL);
+    GetFullPathName(pszDir, _countof(g_szRootDir), g_szRootDir, NULL);
 
-    StringCchCopy(spec, _countof(spec), g_szDir);
+    StringCchCopy(spec, _countof(spec), g_szRootDir);
     PathAddBackslash(spec);
     StringCchCat(spec, _countof(spec), TEXT("*"));
 
@@ -389,13 +390,13 @@ BOOL ShowContextMenu(HWND hwnd, INT iItem, INT xPos, INT yPos, UINT uFlags = CMF
 
     if (iItem == -1)
     {
-        StringCchCopy(szPath, _countof(szPath), g_szDir);
+        StringCchCopy(szPath, _countof(szPath), g_szRootDir);
     }
     else
     {
         ListView_EnsureVisible(g_hListView, iItem, FALSE);
         ListView_GetItemText(g_hListView, iItem, 0, szItem, _countof(szItem));
-        StringCchCopy(szPath, _countof(szPath), g_szDir);
+        StringCchCopy(szPath, _countof(szPath), g_szRootDir);
         PathAppend(szPath, szItem);
     }
 
@@ -603,7 +604,7 @@ static void InitSubst(HWND hwnd, INT iItem)
 
     TCHAR szItem[MAX_PATH], szPath[MAX_PATH];
     ListView_GetItemText(g_hListView, iItem, 0, szItem, _countof(szItem));
-    StringCchCopy(szPath, _countof(szPath), g_szDir);
+    StringCchCopy(szPath, _countof(szPath), g_szRootDir);
     PathAppend(szPath, szItem);
 
     MAPPING mapping;
@@ -706,6 +707,121 @@ static void InitSubst(HWND hwnd, INT iItem)
     }
 }
 
+mapping_t GetMapping(void)
+{
+    HWND hwndDlg = g_hwndDialogs[1];
+
+    mapping_t mapping;
+    for (UINT id = edt1; id <= edt13; id += 2)
+    {
+        TCHAR szKey[128];
+        TCHAR szValue[1024];
+        ::GetDlgItemText(hwndDlg, id + 0, szKey, _countof(szKey));
+        ::GetDlgItemText(hwndDlg, id + 1, szValue, _countof(szValue));
+        StrTrim(szKey, TEXT(" \t\r\n\x3000"));
+        if (szKey[0] == 0)
+            continue;
+
+        StrTrim(szValue, TEXT(" \t\r\n\x3000"));
+        mapping[szKey] = szValue;
+    }
+
+    return mapping;
+}
+
+BOOL DoTempla(HWND hwnd, LPTSTR pszPath)
+{
+    if (g_szTempDir[0])
+    {
+        SHFILEOPSTRUCT op = { hwnd, FO_DELETE, g_szTempDir };
+        op.fFlags = FOF_NOCONFIRMATION | FOF_SILENT;
+        SHFileOperation(&op);
+        ZeroMemory(g_szTempDir, sizeof(g_szTempDir));
+    }
+
+    string_t filename = PathFindFileName(pszPath);
+
+    TCHAR temp_path[MAX_PATH];
+    GetTempPath(_countof(temp_path), temp_path);
+
+    TCHAR temp_dir[MAX_PATH];
+    GetTempFileName(temp_path, L"FDT", 0, temp_dir);
+
+    DeleteFile(temp_dir);
+    if (!CreateDirectory(temp_dir, NULL))
+        return FALSE;
+
+    StringCchCopy(g_szTempDir, _countof(g_szTempDir), temp_dir);
+
+    mapping_t mapping = GetMapping();
+    string_list_t ignore;
+    templa(pszPath, temp_dir, mapping, ignore);
+
+    for (auto& pair : mapping)
+    {
+        str_replace(filename, pair.first, pair.second);
+    }
+
+    StringCchCopy(pszPath, MAX_PATH, temp_dir);
+    PathAppend(pszPath, filename.c_str());
+    return TRUE;
+}
+
+static void OnBeginDrag(HWND hwnd)
+{
+    INT cSelected = ListView_GetSelectedCount(g_hListView);
+    if (cSelected == 0)
+        return;
+
+    PIDLIST_ABSOLUTE* ppidlAbsolute;
+    ppidlAbsolute = (PIDLIST_ABSOLUTE*)CoTaskMemAlloc(sizeof(PIDLIST_ABSOLUTE) * cSelected);
+
+    PITEMID_CHILD* ppidlChild;
+    ppidlChild = (PITEMID_CHILD*)CoTaskMemAlloc(sizeof(PITEMID_CHILD) * cSelected);
+
+    if (!ppidlAbsolute || !ppidlChild)
+    {
+        CoTaskMemFree(ppidlAbsolute);
+        CoTaskMemFree(ppidlChild);
+        return;
+    }
+
+    INT cItems = ListView_GetItemCount(g_hListView);
+    for (UINT i = 0, j = 0; i < cItems; ++i)
+    {
+        if (ListView_GetItemState(g_hListView, i, LVIS_SELECTED))
+        {
+            TCHAR szPath[MAX_PATH], szItem[MAX_PATH];
+            ListView_GetItemText(g_hListView, i, 0, szItem, _countof(szItem));
+            StringCchCopy(szPath, _countof(szPath), g_szRootDir);
+            PathAppend(szPath, szItem);
+            DoTempla(hwnd, szPath);
+            ppidlAbsolute[j++] = ILCreateFromPath(szPath);
+        }
+    }
+
+    IShellFolder* pShellFolder = NULL;
+    SHBindToParent(ppidlAbsolute[0], IID_PPV_ARGS(&pShellFolder), NULL);
+
+    for (UINT i = 0; i < cSelected; i++)
+        ppidlChild[i] = ILFindLastID(ppidlAbsolute[i]);
+
+    IDataObject *pDataObject = NULL;
+    pShellFolder->GetUIObjectOf(NULL, cSelected, (LPCITEMIDLIST*)ppidlChild, IID_IDataObject, NULL,
+                                (void **)&pDataObject);
+    if (pDataObject)
+    {
+        DWORD dwEffect;
+        DoDragDrop(pDataObject, g_pDropSource, DROPEFFECT_COPY, &dwEffect);
+    }
+
+    for (UINT i = 0; i < cSelected; ++i)
+        CoTaskMemFree(ppidlAbsolute[i]);
+
+    CoTaskMemFree(ppidlAbsolute);
+    CoTaskMemFree(ppidlChild);
+}
+
 static LRESULT OnNotify(HWND hwnd, int idFrom, LPNMHDR pnmhdr)
 {
     if (idFrom != 1)
@@ -738,7 +854,7 @@ static LRESULT OnNotify(HWND hwnd, int idFrom, LPNMHDR pnmhdr)
                     ListView_GetItemText(g_hListView, iItem, 0, szItem, _countof(szItem));
 
                     ZeroMemory(szPath, sizeof(szPath));
-                    StringCchCopy(szPath, _countof(szPath), g_szDir);
+                    StringCchCopy(szPath, _countof(szPath), g_szRootDir);
                     PathAppend(szPath, szItem);
 
                     if (::GetKeyState(VK_SHIFT) < 0)
@@ -782,58 +898,7 @@ static LRESULT OnNotify(HWND hwnd, int idFrom, LPNMHDR pnmhdr)
 
     case LVN_BEGINDRAG:
     case LVN_BEGINRDRAG:
-        {
-            INT cSelected = ListView_GetSelectedCount(g_hListView);
-            if (cSelected == 0)
-                break;
-
-            PIDLIST_ABSOLUTE* ppidlAbsolute;
-            ppidlAbsolute = (PIDLIST_ABSOLUTE*)CoTaskMemAlloc(sizeof(PIDLIST_ABSOLUTE) * cSelected);
-
-            PITEMID_CHILD* ppidlChild;
-            ppidlChild = (PITEMID_CHILD*)CoTaskMemAlloc(sizeof(PITEMID_CHILD) * cSelected);
-
-            if (!ppidlAbsolute || !ppidlChild)
-            {
-                CoTaskMemFree(ppidlAbsolute);
-                CoTaskMemFree(ppidlChild);
-                break;
-            }
-
-            INT cItems = ListView_GetItemCount(g_hListView);
-            for (UINT i = 0, j = 0; i < cItems; ++i)
-            {
-                if (ListView_GetItemState(g_hListView, i, LVIS_SELECTED))
-                {
-                    TCHAR szPath[MAX_PATH], szItem[MAX_PATH];
-                    ListView_GetItemText(g_hListView, i, 0, szItem, _countof(szItem));
-                    StringCchCopy(szPath, _countof(szPath), g_szDir);
-                    PathAppend(szPath, szItem);
-                    ppidlAbsolute[j++] = ILCreateFromPath(szPath);
-                }
-            }
-
-            IShellFolder* pShellFolder = NULL;
-            SHBindToParent(ppidlAbsolute[0], IID_PPV_ARGS(&pShellFolder), NULL);
-
-            for (UINT i = 0; i < cSelected; i++)
-                ppidlChild[i] = ILFindLastID(ppidlAbsolute[i]);
-
-            IDataObject *pDataObject = NULL;
-            pShellFolder->GetUIObjectOf(NULL, cSelected, (LPCITEMIDLIST*)ppidlChild, IID_IDataObject, NULL,
-                                        (void **)&pDataObject);
-            if (pDataObject)
-            {
-                DWORD dwEffect;
-                DoDragDrop(pDataObject, g_pDropSource, DROPEFFECT_COPY, &dwEffect);
-            }
-
-            for (UINT i = 0; i < cSelected; ++i)
-                CoTaskMemFree(ppidlAbsolute[i]);
-
-            CoTaskMemFree(ppidlAbsolute);
-            CoTaskMemFree(ppidlChild);
-        }
+        OnBeginDrag(hwnd);
         break;
     }
 
@@ -855,7 +920,7 @@ static LRESULT OnShellChange(HWND hwnd, WPARAM wParam, LPARAM lParam)
     SHGetPathFromIDList(ppidlAbsolute[0], szPath);
     PathRemoveFileSpec(szPath);
 
-    if (lstrcmpi(szPath, g_szDir) == 0)
+    if (lstrcmpi(szPath, g_szRootDir) == 0)
     {
         SHGetPathFromIDList(ppidlAbsolute[0], szPath);
         LPTSTR pszFileName = PathFindFileName(szPath);
@@ -942,7 +1007,7 @@ WinMain(HINSTANCE   hInstance,
     DWORD style = WS_OVERLAPPEDWINDOW;
     DWORD exstyle = 0;
     HWND hwnd = ::CreateWindowEx(exstyle, CLASSNAME, doLoadStr(IDS_APPVERSION), style,
-                                 CW_USEDEFAULT, CW_USEDEFAULT, 500, 450,
+                                 CW_USEDEFAULT, CW_USEDEFAULT, 500, 400,
                                  NULL, NULL, hInstance, NULL);
     if (!hwnd)
     {

@@ -100,7 +100,7 @@ CDropTarget::DragLeave()
     return S_OK;
 }
 
-extern TCHAR g_szDir[MAX_PATH];
+extern TCHAR g_szRootDir[MAX_PATH];
 
 STDMETHODIMP
 CDropTarget::Drop(IDataObject *pDataObj, DWORD grfKeyState, POINTL pt, DWORD *pdwEffect)
@@ -149,7 +149,7 @@ CDropTarget::Drop(IDataObject *pDataObj, DWORD grfKeyState, POINTL pt, DWORD *pd
         SHGetPathFromIDList(pidl, szSrcFilePath);
 
         TCHAR szDestFilePath[MAX_PATH];
-        StringCchCopy(szDestFilePath, _countof(szDestFilePath), g_szDir);
+        StringCchCopy(szDestFilePath, _countof(szDestFilePath), g_szRootDir);
         PathAppend(szDestFilePath, PathFindFileName(szSrcFilePath));
 
         MessageBox(NULL, szDestFilePath, szSrcFilePath, 0);
