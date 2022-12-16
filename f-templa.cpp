@@ -147,32 +147,32 @@ static void Dialog2_ScrollClient(HWND hwnd, INT bar, INT pos)
 
 static INT Dialog2_GetVScrollPos(HWND hwnd, UINT code)
 {
-    SCROLLINFO si = { sizeof(si), SIF_PAGE | SIF_POS | SIF_RANGE | SIF_TRACKPOS};
-    GetScrollInfo(hwnd, SB_VERT, &si);
+    SCROLLINFO si = { sizeof(si), SIF_ALL };
+    ::GetScrollInfo(hwnd, SB_VERT, &si);
 
-    INT nPos = -1;
-    INT nMin = si.nMin;
+    INT nPos = -1, step = 10;
     INT nMax = si.nMax - (si.nPage - 1);
 
     switch (code)
     {
     case SB_LINEUP:
-        nPos = std::max(si.nPos - 1, nMin);
+        nPos = std::max(si.nPos - step, si.nMin);
         break;
 
     case SB_LINEDOWN:
-        nPos = std::min(si.nPos + 1, nMax);
+        nPos = std::min(si.nPos + step, nMax);
         break;
 
     case SB_PAGEUP:
-        nPos = std::max(si.nPos - (int)si.nPage, nMin);
+        nPos = std::max(si.nPos - (INT)si.nPage, si.nMin);
         break;
 
     case SB_PAGEDOWN:
-        nPos = std::min(si.nPos + (int)si.nPage, nMax);
+        nPos = std::min(si.nPos + (INT)si.nPage, nMax);
         break;
 
     case SB_THUMBPOSITION:
+        // Do nothing
         break;
 
     case SB_THUMBTRACK:
@@ -180,7 +180,7 @@ static INT Dialog2_GetVScrollPos(HWND hwnd, UINT code)
         break;
 
     case SB_TOP:
-        nPos = nMin;
+        nPos = si.nMin;
         break;
 
     case SB_BOTTOM:
@@ -188,6 +188,7 @@ static INT Dialog2_GetVScrollPos(HWND hwnd, UINT code)
         break;
 
     case SB_ENDSCROLL:
+        // Do nothing
         break;
     }
 
@@ -196,7 +197,7 @@ static INT Dialog2_GetVScrollPos(HWND hwnd, UINT code)
 
 static void Dialog2_OnVScroll(HWND hwnd, HWND hwndCtl, UINT code, int pos)
 {
-    if (!(GetWindowLong(hwnd, GWL_STYLE) & WS_VSCROLL))
+    if (!(::GetWindowLong(hwnd, GWL_STYLE) & WS_VSCROLL))
         return;
 
     INT nPos = Dialog2_GetVScrollPos(hwnd, code);
@@ -207,6 +208,29 @@ static void Dialog2_OnVScroll(HWND hwnd, HWND hwndCtl, UINT code, int pos)
     Dialog2_ScrollClient(hwnd, SB_VERT, nPos);
 }
 
+static void Dialog2_FixScrollPos(HWND hwnd)
+{
+    SCROLLINFO si = { sizeof(si), SIF_PAGE | SIF_POS | SIF_RANGE | SIF_TRACKPOS };
+    ::GetScrollInfo(hwnd, SB_VERT, &si);
+
+    INT nPos = std::max(si.nPos, si.nMin);
+    nPos = std::min(nPos, (INT)(si.nMax - (si.nPage - 1)));
+    ::SetScrollPos(hwnd, SB_VERT, nPos, TRUE);
+    Dialog2_ScrollClient(hwnd, SB_VERT, nPos);
+}
+
+static void Dialog2_OnMouseWheel(HWND hwnd, int xPos, int yPos, int zDelta, UINT fwKeys)
+{
+    if (zDelta > 0)
+    {
+        ::PostMessage(hwnd, WM_VSCROLL, MAKEWPARAM(SB_LINEUP, 0), 0);
+    }
+    else if (zDelta < 0)
+    {
+        ::PostMessage(hwnd, WM_VSCROLL, MAKEWPARAM(SB_LINEDOWN, 0), 0);
+    }
+}
+
 static INT_PTR CALLBACK
 Dialog2Proc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
@@ -215,6 +239,7 @@ Dialog2Proc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
         HANDLE_MSG(hwnd, WM_INITDIALOG, Dialog2_OnInitDialog);
         HANDLE_MSG(hwnd, WM_COMMAND, Dialog2_OnCommand);
         HANDLE_MSG(hwnd, WM_VSCROLL, Dialog2_OnVScroll);
+        HANDLE_MSG(hwnd, WM_MOUSEWHEEL, Dialog2_OnMouseWheel);
     }
     return 0;
 }
@@ -321,12 +346,14 @@ static void OnSize(HWND hwnd, UINT state, int cx, int cy)
             si.nMin = 0;
             si.nMax = g_cyDialog2;
             si.nPage = cyDialog;
-            SetScrollInfo(g_hwndDialogs[1], SB_VERT, &si, TRUE);
-            ShowScrollBar(g_hwndDialogs[1], SB_VERT, TRUE);
+            ::SetScrollInfo(g_hwndDialogs[1], SB_VERT, &si, FALSE);
+            ::ShowScrollBar(g_hwndDialogs[1], SB_VERT, TRUE);
+            Dialog2_FixScrollPos(g_hwndDialogs[1]);
         }
         else
         {
-            ShowScrollBar(g_hwndDialogs[1], SB_VERT, FALSE);
+            ::ShowScrollBar(g_hwndDialogs[1], SB_VERT, FALSE);
+            ::SetScrollPos(g_hwndDialogs[1], SB_VERT, 0, TRUE);
         }
     }
 }
