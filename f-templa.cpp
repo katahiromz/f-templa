@@ -29,11 +29,12 @@ INT g_iDialog = 0;
 HWND g_hwndDialogs[2] = { NULL };
 HWND g_hStatusBar = NULL;
 TCHAR g_szRootDir[MAX_PATH] = TEXT("");
-TCHAR g_szTempDir[MAX_PATH + 1] = TEXT("");
+TCHAR g_temp_dir[MAX_PATH + 1] = TEXT("");
 CDropTarget* g_pDropTarget = NULL;
 CDropSource* g_pDropSource = NULL;
 UINT g_nNotifyID = 0;
 UINT g_cyDialog2 = 0;
+string_list_t g_ignore = { L"q", L"*.bin", L".git", L".svg", L".vs" };
 
 LPCTSTR doLoadStr(LPCTSTR text)
 {
@@ -731,12 +732,12 @@ mapping_t GetMapping(void)
 
 BOOL DoTempla(HWND hwnd, LPTSTR pszPath)
 {
-    if (g_szTempDir[0])
+    if (g_temp_dir[0])
     {
-        SHFILEOPSTRUCT op = { hwnd, FO_DELETE, g_szTempDir };
+        SHFILEOPSTRUCT op = { hwnd, FO_DELETE, g_temp_dir };
         op.fFlags = FOF_NOCONFIRMATION | FOF_SILENT;
         SHFileOperation(&op);
-        ZeroMemory(g_szTempDir, sizeof(g_szTempDir));
+        ZeroMemory(g_temp_dir, sizeof(g_temp_dir));
     }
 
     string_t filename = PathFindFileName(pszPath);
@@ -751,11 +752,10 @@ BOOL DoTempla(HWND hwnd, LPTSTR pszPath)
     if (!CreateDirectory(temp_dir, NULL))
         return FALSE;
 
-    StringCchCopy(g_szTempDir, _countof(g_szTempDir), temp_dir);
+    StringCchCopy(g_temp_dir, _countof(g_temp_dir), temp_dir);
 
     mapping_t mapping = GetMapping();
-    string_list_t ignore;
-    templa(pszPath, temp_dir, mapping, ignore);
+    templa(pszPath, temp_dir, mapping, g_ignore);
 
     for (auto& pair : mapping)
     {
@@ -811,7 +811,7 @@ static void OnBeginDrag(HWND hwnd)
                                 (void **)&pDataObject);
     if (pDataObject)
     {
-        DWORD dwEffect;
+        DWORD dwEffect = DROPEFFECT_COPY;
         DoDragDrop(pDataObject, g_pDropSource, DROPEFFECT_COPY, &dwEffect);
     }
 
