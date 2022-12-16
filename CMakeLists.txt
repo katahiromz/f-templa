@@ -7,7 +7,7 @@
 cmake_minimum_required(VERSION 3.0)
 
 # project name and languages
-project(FolderDeTempla CXX RC)
+project(f-templa CXX RC)
 
 # Unicode
 add_definitions(-DUNICODE -D_UNICODE)
@@ -22,12 +22,12 @@ set(LIBRARY_OUTPUT_PATH ${CMAKE_BINARY_DIR})
 # libtempla and templa.exe
 add_subdirectory(templa)
 
-# FolderDeTempla.exe
-add_executable(FolderDeTempla WIN32
-    FolderDeTempla.cpp
+# f-templa.exe
+add_executable(f-templa WIN32
+    f-templa.cpp
     CDropTarget.cpp
     CDropSource.cpp
-    FolderDeTempla_res.rc)
-target_link_libraries(FolderDeTempla comctl32 shlwapi libtempla)
+    f-templa_res.rc)
+target_link_libraries(f-templa comctl32 shlwapi libtempla)
 
 ##############################################################################
