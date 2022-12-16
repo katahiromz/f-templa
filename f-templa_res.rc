@@ -47,8 +47,8 @@ CAPTION "フォルダでテンプレート"
 STYLE DS_CONTROL | WS_CHILD | WS_CAPTION | WS_VSCROLL
 FONT 9, "MS UI Gothic"
 {
-    CTEXT "☆ 置き換え項目 ☆", -1, 5, 10, 85, 14
-    CONTROL "", edt1, "EDIT", ES_AUTOHSCROLL | WS_BORDER | WS_TABSTOP, 5, 30, 60, 14
+    CTEXT "☆ 置き換え項目 ☆", -1, 5, 10, 73, 14
+    EDITTEXT edt1, 5, 30, 60, 14, ES_AUTOHSCROLL
     LTEXT "→", stc1, 5, 45, 10, 14, SS_CENTERIMAGE | SS_NOTIFY | NOT WS_GROUP
     EDITTEXT edt2, 15, 45, 60, 14, ES_AUTOHSCROLL
     PUSHBUTTON "▼", psh1, 80, 45, 12, 14
@@ -76,6 +76,7 @@ FONT 9, "MS UI Gothic"
     LTEXT "→", stc7, 5, 285, 10, 14, SS_CENTERIMAGE | SS_NOTIFY | NOT WS_GROUP
     EDITTEXT edt14, 15, 285, 60, 14, ES_AUTOHSCROLL
     PUSHBUTTON "▼", psh7, 80, 285, 12, 14
+    PUSHBUTTON "▼", psh15, 80, 10, 12, 14
 }
 
 IDD_INPUTBOX DIALOG 0, 0, 170, 81
@@ -102,12 +103,15 @@ STRINGTABLE
     IDS_NOW, "{{今}}"
     IDS_THISYEAR, "{{今年}}"
     IDS_USERNAME, "{{ユーザー名}}"
+    IDS_USERNAME2, "{{ユーザ名}}"
     IDS_YEAR, "年"
     IDS_MONTH, "月"
     IDS_DAY, "日"
     IDS_HOUR, "時"
     IDS_MINUTE, "分"
     IDS_SECOND, "秒"
+    IDS_WEEKDAY, "{{曜日}}"
+    IDS_WEEKDAYS, "日月火水木金土"
 }
 
 //////////////////////////////////////////////////////////////////////////////

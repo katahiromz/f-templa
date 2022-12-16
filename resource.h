@@ -17,12 +17,15 @@
 #define IDS_NOW                             105
 #define IDS_THISYEAR                        106
 #define IDS_USERNAME                        107
-#define IDS_YEAR                            108
-#define IDS_MONTH                           109
-#define IDS_DAY                             110
-#define IDS_HOUR                            111
-#define IDS_MINUTE                          112
-#define IDS_SECOND                          113
+#define IDS_USERNAME2                       108
+#define IDS_YEAR                            109
+#define IDS_MONTH                           110
+#define IDS_DAY                             111
+#define IDS_HOUR                            112
+#define IDS_MINUTE                          113
+#define IDS_SECOND                          114
+#define IDS_WEEKDAY                         115
+#define IDS_WEEKDAYS                        116
 
 #define ID_REFRESH_SUBST                    100
 

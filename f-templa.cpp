@@ -668,6 +668,23 @@ static void InitSubst(HWND hwnd, INT iItem)
             pair.second = szUser;
             continue;
         }
+        if (pair.first == L"{{WEEKDAY}}")
+        {
+            SYSTEMTIME st;
+            ::GetLocalTime(&st);
+            switch (st.wDayOfWeek)
+            {
+            case 0: pair.second = L"Sun"; break;
+            case 1: pair.second = L"Mon"; break;
+            case 2: pair.second = L"Tue"; break;
+            case 3: pair.second = L"Wed"; break;
+            case 4: pair.second = L"Thu"; break;
+            case 5: pair.second = L"Fri"; break;
+            case 6: pair.second = L"Sat"; break;
+            default: pair.second.clear(); break;
+            }
+            continue;
+        }
         if (pair.first == doLoadStr(IDS_TODAY))
         {
             SYSTEMTIME st;
@@ -700,12 +717,21 @@ static void InitSubst(HWND hwnd, INT iItem)
             pair.second += doLoadStr(IDS_YEAR);
             continue;
         }
-        if (pair.first == doLoadStr(IDS_USERNAME))
+        if (pair.first == doLoadStr(IDS_USERNAME) || pair.first == doLoadStr(IDS_USERNAME2))
         {
             TCHAR szUser[MAX_PATH];
             DWORD cchUser = _countof(szUser);
             ::GetUserName(szUser, &cchUser);
             pair.second = szUser;
+            continue;
+        }
+        if (pair.first == doLoadStr(IDS_WEEKDAY))
+        {
+            SYSTEMTIME st;
+            ::GetLocalTime(&st);
+            assert(st.wDayOfWeek < 7);
+            pair.second.clear();
+            pair.second += doLoadStr(IDS_WEEKDAYS)[st.wDayOfWeek];
             continue;
         }
     }
