@@ -117,9 +117,11 @@ static void Dialog2_OnCommand(HWND hwnd, int id, HWND hwndCtl, UINT codeNotify)
     case stc5:
     case stc6:
     case stc7:
+        if (codeNotify == STN_CLICKED)
         {
-            UINT id = edt2 + (id - stc1) * 2;
-            HWND hwndEdit = ::GetDlgItem(hwnd, id);
+            UINT nEditID = edt2 + (id - stc1) * 2;
+            HWND hwndEdit = ::GetDlgItem(hwnd, nEditID);
+            assert(hwndEdit);
             Edit_SetSel(hwndEdit, 0, -1);
             ::SetFocus(hwndEdit);
         }
