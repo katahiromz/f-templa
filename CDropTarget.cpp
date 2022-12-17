@@ -6,6 +6,11 @@
 #include "f-templa.hpp"
 #include "resource.h"
 
+inline LPBYTE byte_cast(LPIDA pIDA, UINT p)
+{
+    return reinterpret_cast<LPBYTE>(pIDA) + pIDA->aoffset[p];
+}
+
 CDropTarget::CDropTarget(HWND hwnd)
     : m_cRef(1)
     , m_hwnd(hwnd)
@@ -101,11 +106,6 @@ CDropTarget::DragLeave()
     return S_OK;
 }
 
-inline LPBYTE byte_cast(LPIDA pIDA, UINT p)
-{
-    return reinterpret_cast<LPBYTE>(pIDA) + pIDA->aoffset[p];
-}
-
 STDMETHODIMP
 CDropTarget::Drop(IDataObject *pDataObj, DWORD grfKeyState, POINTL pt, DWORD *pdwEffect)
 {
@@ -162,6 +162,12 @@ CDropTarget::Drop(IDataObject *pDataObj, DWORD grfKeyState, POINTL pt, DWORD *pd
         ZeroMemory(szDestFilePath, sizeof(szDestFilePath));
 
         SHGetPathFromIDList(pidl, szSrcFilePath);
+
+        TCHAR szTempDir[MAX_PATH + 1];
+        StringCchCopy(szTempDir, _countof(szTempDir), g_temp_dir);
+        PathAddBackslash(szTempDir);
+        if (wcsstr(szSrcFilePath, szTempDir) == 0)
+            break;
 
         StringCchCopy(szDestFilePath, _countof(szDestFilePath), g_root_dir);
         PathAppend(szDestFilePath, PathFindFileName(szSrcFilePath));
