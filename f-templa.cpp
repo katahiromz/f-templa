@@ -1063,6 +1063,85 @@ static void OnBeginDrag(HWND hwnd)
     CoTaskMemFree(ppidlChild);
 }
 
+static LRESULT OnListViewKeyDown(HWND hwnd, LV_KEYDOWN *pKeyDown)
+{
+    INT iItem = ListView_GetNextItem(g_hListView, -1, LVNI_SELECTED);
+
+    switch (pKeyDown->wVKey)
+    {
+    case VK_RETURN:
+        {
+            ShowContextMenu(hwnd, iItem, 0, 0, CMF_DEFAULTONLY);
+        }
+        break;
+
+    case VK_DELETE:
+        if (iItem != -1)
+        {
+            TCHAR szPath[MAX_PATH], szItem[MAX_PATH];
+            ZeroMemory(szPath, sizeof(szPath));
+
+            StringCchCopy(szPath, _countof(szPath), g_root_dir);
+            ListView_GetItemText(g_hListView, iItem, 0, szItem, _countof(szItem));
+            PathAppend(szPath, szItem);
+
+            if (::GetKeyState(VK_SHIFT) < 0)
+            {
+                if (!::DeleteFile(szPath))
+                {
+                    // TODO: error message
+                }
+            }
+            else
+            {
+                SHFILEOPSTRUCT op = { hwnd, FO_DELETE, szPath };
+                op.fFlags = FOF_ALLOWUNDO;
+                ::SHFileOperation(&op);
+            }
+        }
+        break;
+    }
+
+    return 0;
+}
+
+static LRESULT OnListViewItemChanged(HWND hwnd, NM_LISTVIEW* pListView)
+{
+    static INT s_iItemOld = -1;
+    INT iItem = ListView_GetNextItem(g_hListView, -1, LVNI_SELECTED);
+    if (iItem != -1)
+    {
+        g_iDialog = 1;
+        ::SendMessage(g_hStatusBar, SB_SETTEXT, 0 | 0, (LPARAM)doLoadStr(IDS_TYPESUBST));
+        InitSubstItem(hwnd, iItem);
+        s_iItemOld = iItem;
+    }
+    else
+    {
+        if (g_iDialog == 1 && s_iItemOld != -1)
+        {
+            TCHAR szItem[MAX_PATH], szPath[MAX_PATH];
+            ListView_GetItemText(g_hListView, s_iItemOld, 0, szItem, _countof(szItem));
+            StringCchCopy(szPath, _countof(szPath), g_root_dir);
+            PathAppend(szPath, szItem);
+
+            mapping_t mapping = GetMapping();
+            SaveFdtFile(szPath, mapping);
+        }
+        g_iDialog = 0;
+        ::SendMessage(g_hStatusBar, SB_SETTEXT, 0 | 0, (LPARAM)doLoadStr(IDS_SELECTITEM));
+        s_iItemOld = iItem;
+    }
+
+    for (INT i = 0; i < _countof(g_hwndDialogs); ++i)
+        ::ShowWindow(g_hwndDialogs[i], SW_HIDE);
+
+    ::ShowWindow(g_hwndDialogs[g_iDialog], SW_SHOWNOACTIVATE);
+
+    ::PostMessage(hwnd, WM_SIZE, 0, 0);
+    return 0;
+}
+
 static LRESULT OnNotify(HWND hwnd, int idFrom, LPNMHDR pnmhdr)
 {
     if (idFrom != 1)
@@ -1079,79 +1158,10 @@ static LRESULT OnNotify(HWND hwnd, int idFrom, LPNMHDR pnmhdr)
         break;
 
     case LVN_KEYDOWN:
-        {
-            LV_KEYDOWN* pKeyDown = (LV_KEYDOWN*)pnmhdr;
-            if (pKeyDown->wVKey == VK_RETURN)
-            {
-                INT iItem = ListView_GetNextItem(g_hListView, -1, LVNI_SELECTED);
-                ShowContextMenu(hwnd, iItem, 0, 0, CMF_DEFAULTONLY);
-            }
-            else if (pKeyDown->wVKey == VK_DELETE)
-            {
-                INT iItem = ListView_GetNextItem(g_hListView, -1, LVNI_SELECTED);
-                if (iItem != -1)
-                {
-                    TCHAR szPath[MAX_PATH], szItem[MAX_PATH];
-                    ZeroMemory(szPath, sizeof(szPath));
-
-                    StringCchCopy(szPath, _countof(szPath), g_root_dir);
-                    ListView_GetItemText(g_hListView, iItem, 0, szItem, _countof(szItem));
-                    PathAppend(szPath, szItem);
-
-                    if (::GetKeyState(VK_SHIFT) < 0)
-                    {
-                        if (!::DeleteFile(szPath))
-                        {
-                            // TODO: error message
-                        }
-                    }
-                    else
-                    {
-                        SHFILEOPSTRUCT op = { hwnd, FO_DELETE, szPath };
-                        op.fFlags = FOF_ALLOWUNDO;
-                        ::SHFileOperation(&op);
-                    }
-                }
-            }
-        }
-        break;
+        return OnListViewKeyDown(hwnd, (LV_KEYDOWN*)pnmhdr);
 
     case LVN_ITEMCHANGED:
-        {
-            static INT s_iItemOld = -1;
-            INT iItem = ListView_GetNextItem(g_hListView, -1, LVNI_SELECTED);
-            if (iItem != -1)
-            {
-                g_iDialog = 1;
-                ::SendMessage(g_hStatusBar, SB_SETTEXT, 0 | 0, (LPARAM)doLoadStr(IDS_TYPESUBST));
-                InitSubstItem(hwnd, iItem);
-                s_iItemOld = iItem;
-            }
-            else
-            {
-                if (g_iDialog == 1 && s_iItemOld != -1)
-                {
-                    TCHAR szItem[MAX_PATH], szPath[MAX_PATH];
-                    ListView_GetItemText(g_hListView, s_iItemOld, 0, szItem, _countof(szItem));
-                    StringCchCopy(szPath, _countof(szPath), g_root_dir);
-                    PathAppend(szPath, szItem);
-
-                    mapping_t mapping = GetMapping();
-                    SaveFdtFile(szPath, mapping);
-                }
-                g_iDialog = 0;
-                ::SendMessage(g_hStatusBar, SB_SETTEXT, 0 | 0, (LPARAM)doLoadStr(IDS_SELECTITEM));
-                s_iItemOld = iItem;
-            }
-
-            for (INT i = 0; i < _countof(g_hwndDialogs); ++i)
-                ::ShowWindow(g_hwndDialogs[i], SW_HIDE);
-
-            ::ShowWindow(g_hwndDialogs[g_iDialog], SW_SHOWNOACTIVATE);
-
-            ::PostMessage(hwnd, WM_SIZE, 0, 0);
-        }
-        break;
+        return OnListViewItemChanged(hwnd, (NM_LISTVIEW*)pnmhdr);
 
     case LVN_BEGINDRAG:
     case LVN_BEGINRDRAG:
