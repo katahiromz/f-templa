@@ -75,6 +75,9 @@ static void InitListView(HWND hListView, HIMAGELIST hImageList, LPCTSTR pszDir)
                 continue;
             }
 
+            if (templa_wildcard(find.cFileName, TEXT("*.fdt")))
+                continue;
+
             SHFILEINFO info;
             SHGetFileInfo(find.cFileName, find.dwFileAttributes, &info, sizeof(info),
                           SHGFI_SYSICONINDEX | SHGFI_USEFILEATTRIBUTES);
