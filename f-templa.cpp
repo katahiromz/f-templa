@@ -19,8 +19,6 @@
 #undef min
 #undef max
 
-typedef std::map<std::wstring, std::wstring> MAPPING;
-
 HWND g_hWnd = NULL;
 HWND g_hListView = NULL;
 HIMAGELIST g_hImageList = NULL;
@@ -34,7 +32,7 @@ CDropSource* g_pDropSource = NULL;
 UINT g_nNotifyID = 0;
 UINT g_cyDialog2 = 0;
 string_list_t g_ignore = { L"q", L"*.bin", L".git", L".svg", L".vs" };
-std::multimap<string_t, string_t> g_history;
+std::vector<std::pair<string_t, string_t>> g_history;
 
 LPCTSTR doLoadStr(LPCTSTR text)
 {
@@ -142,6 +140,65 @@ static void Dialog2_OnCommand(HWND hwnd, int id, HWND hwndCtl, UINT codeNotify)
             ::SetFocus(hwndEdit);
         }
         break;
+    case IDC_DARROW_00:
+    case IDC_DARROW_01:
+    case IDC_DARROW_02:
+    case IDC_DARROW_03:
+    case IDC_DARROW_04:
+    case IDC_DARROW_05:
+    case IDC_DARROW_06:
+    case IDC_DARROW_07:
+    case IDC_DARROW_08:
+    case IDC_DARROW_09:
+    case IDC_DARROW_10:
+    case IDC_DARROW_11:
+    case IDC_DARROW_12:
+    case IDC_DARROW_13:
+    case IDC_DARROW_14:
+    case IDC_DARROW_15:
+        if (codeNotify == BN_CLICKED)
+        {
+            UINT nEditFromID = IDC_FROM_00 + (id - IDC_DARROW_00);
+            UINT nEditToID = IDC_TO_00 + (id - IDC_DARROW_00);
+            RECT rc;
+            GetWindowRect(GetDlgItem(hwnd, id), &rc);
+
+            TCHAR szKey[128];
+            TCHAR szValue[1024];
+            GetDlgItemText(hwnd, nEditFromID, szKey, _countof(szKey));
+            StrTrim(szKey, TEXT(" \t\r\n\x3000"));
+
+            string_list_t strs;
+            for (auto& pair : g_history)
+            {
+                if (pair.first == szKey)
+                {
+                    strs.push_back(pair.second);
+                }
+            }
+
+            if (strs.size())
+            {
+                HMENU hPopup = CreatePopupMenu();
+
+                INT i = 1;
+                for (auto& str : strs)
+                {
+                    ::AppendMenu(hPopup, MF_STRING, i++, str.c_str());
+                }
+
+                INT iChoice = TrackPopupMenu(hPopup, TPM_RETURNCMD | TPM_LEFTALIGN | TPM_LEFTBUTTON,
+                    rc.right, rc.top, 0, hwnd, &rc);
+                if (iChoice != 0)
+                {
+                    HWND hwndEdit = GetDlgItem(hwnd, nEditToID);
+                    assert(hwndEdit);
+                    SetWindowText(hwndEdit, strs[iChoice - 1].c_str());
+                    Edit_SetSel(hwndEdit, 0, -1);
+                    SetFocus(hwndEdit);
+                }
+            }
+        }
     }
 }
 
@@ -555,7 +612,7 @@ static void OnDestroy(HWND hwnd)
     PostQuitMessage(0);
 }
 
-static BOOL FindSubst(HWND hwndDlg, const string_t& str, MAPPING& mapping)
+static BOOL FindSubst(HWND hwndDlg, const string_t& str, mapping_t& mapping)
 {
     size_t ich0 = 0;
     for (;;)
@@ -575,7 +632,7 @@ static BOOL FindSubst(HWND hwndDlg, const string_t& str, MAPPING& mapping)
     return FALSE;
 }
 
-static BOOL InitSubstFile(HWND hwnd, HWND hwndDlg, LPCTSTR pszPath, MAPPING& mapping)
+static BOOL InitSubstFile(HWND hwnd, HWND hwndDlg, LPCTSTR pszPath, mapping_t& mapping)
 {
     TEMPLA_FILE file;
     if (!file.load(pszPath))
@@ -584,7 +641,7 @@ static BOOL InitSubstFile(HWND hwnd, HWND hwndDlg, LPCTSTR pszPath, MAPPING& map
     return FindSubst(hwndDlg, file.m_string, mapping);
 }
 
-static BOOL InitSubstDir(HWND hwnd, HWND hwndDlg, LPCTSTR pszPath, MAPPING& mapping)
+static BOOL InitSubstDir(HWND hwnd, HWND hwndDlg, LPCTSTR pszPath, mapping_t& mapping)
 {
     string_t str = PathFindFileName(pszPath);
 
@@ -625,7 +682,7 @@ static BOOL InitSubstDir(HWND hwnd, HWND hwndDlg, LPCTSTR pszPath, MAPPING& mapp
     return TRUE;
 }
 
-static void ReplacePresetMapping(MAPPING& mapping)
+static void ReplacePresetMapping(mapping_t& mapping)
 {
     for (auto& pair : mapping)
     {
@@ -737,6 +794,77 @@ static void ReplacePresetMapping(MAPPING& mapping)
     }
 }
 
+static bool LoadFdtFile(LPCTSTR pszBasePath, mapping_t& mapping)
+{
+    string_t path = pszBasePath;
+    path += L".fdt";
+
+    FDT_FILE file;
+    if (!file.load(path.c_str()))
+        return false;
+
+    auto it = file.name2section.find(L"LATEST");
+    if (it != file.name2section.end())
+    {
+        auto& latest_section = it->second;
+        for (auto& item : latest_section.items)
+        {
+            mapping[item.key] = item.value;
+        }
+    }
+
+    g_history.clear();
+    it = file.name2section.find(L"HISTORY");
+    if (it != file.name2section.end())
+    {
+        auto& history_section = it->second;
+        for (auto& item : history_section.items)
+        {
+            g_history.push_back(std::make_pair(item.key, item.value));
+        }
+    }
+
+    return true;
+}
+
+static bool SaveFdtFile(LPCTSTR pszBasePath, mapping_t& mapping)
+{
+    string_t path = pszBasePath;
+    path += L".fdt";
+
+    FDT_FILE file;
+    auto& latest_section = file.name2section[L"LATEST"];
+    for (auto& pair : mapping)
+    {
+        FDT_FILE::ITEM item = { pair.first, pair.second };
+        latest_section.items.push_back(item);
+    }
+    latest_section.simplify();
+
+    for (auto& pair : mapping)
+    {
+retry:
+        for (auto it = g_history.begin(); it != g_history.end(); ++it)
+        {
+            if (it->first == pair.first && it->second == pair.second)
+            {
+                g_history.erase(it);
+                goto retry;
+            }
+        }
+        g_history.push_back(std::make_pair(pair.first, pair.second));
+    }
+
+    auto& history_section = file.name2section[L"HISTORY"];
+    for (auto& pair : g_history)
+    {
+        FDT_FILE::ITEM item = { pair.first, pair.second };
+        history_section.items.push_back(item);
+    }
+
+    return file.save(path.c_str());
+}
+
 static void InitSubstItem(HWND hwnd, INT iItem)
 {
     HWND hwndDlg = g_hwndDialogs[g_iDialog];
@@ -747,40 +875,13 @@ static void InitSubstItem(HWND hwnd, INT iItem)
     StringCchCopy(szPath, _countof(szPath), g_root_dir);
     PathAppend(szPath, szItem);
 
-    MAPPING mapping;
+    mapping_t mapping;
     if (PathIsDirectory(szPath))
         InitSubstDir(hwnd, hwndDlg, szPath, mapping);
     else
         InitSubstFile(hwnd, hwndDlg, szPath, mapping);
 
-    {
-        string_t path = szPath;
-        path += L".fdt";
-
-        FDT_FILE file;
-        if (file.load(path.c_str()))
-        {
-            auto it = file.name2section.find(L"LATEST");
-            if (it != file.name2section.end())
-            {
-                auto& latest_section = it->second;
-                for (auto& item : latest_section.items)
-                {
-                    mapping[item.key] = item.value;
-                }
-            }
-            g_history.clear();
-            it = file.name2section.find(L"HISTORY");
-            if (it != file.name2section.end())
-            {
-                auto& history_section = it->second;
-                for (auto& item : history_section.items)
-                {
-                    g_history.insert(std::make_pair(item.key, item.value));
-                }
-            }
-        }
-    }
+    LoadFdtFile(szPath, mapping);
 
     ReplacePresetMapping(mapping);
 
@@ -794,29 +895,7 @@ static void InitSubstItem(HWND hwnd, INT iItem)
             break;
     }
 
-    {
-        string_t path = szPath;
-        path += L".fdt";
-
-        FDT_FILE file;
-        auto& latest_section = file.name2section[L"LATEST"];
-        for (auto& pair : mapping)
-        {
-            FDT_FILE::ITEM item = { pair.first, pair.second };
-            latest_section.items.push_back(item);
-        }
-        latest_section.simplify();
-
-        auto& values_section = file.name2section[L"HISTORY"];
-        for (auto& pair : mapping)
-        {
-            FDT_FILE::ITEM item = { pair.first, pair.second };
-            values_section.items.push_back(item);
-            g_history.insert(std::make_pair(pair.first, pair.second));
-        }
-
-        file.save(path.c_str());
-    }
+    SaveFdtFile(szPath, mapping);
 }
 
 mapping_t GetMapping(void)
@@ -841,7 +920,7 @@ mapping_t GetMapping(void)
     return mapping;
 }
 
-BOOL DoTempla(HWND hwnd, LPTSTR pszPath)
+BOOL DoTempla(HWND hwnd, LPTSTR pszPath, INT iItem)
 {
     DeleteTempDir(hwnd);
 
@@ -860,6 +939,8 @@ BOOL DoTempla(HWND hwnd, LPTSTR pszPath)
     StringCchCopy(g_temp_dir, _countof(g_temp_dir), temp_dir);
 
     mapping_t mapping = GetMapping();
+    SaveFdtFile(pszPath, mapping);
+
     templa(pszPath, temp_dir, mapping, g_ignore);
 
     for (auto& pair : mapping)
@@ -900,7 +981,7 @@ static void OnBeginDrag(HWND hwnd)
             ListView_GetItemText(g_hListView, i, 0, szItem, _countof(szItem));
             StringCchCopy(szPath, _countof(szPath), g_root_dir);
             PathAppend(szPath, szItem);
-            DoTempla(hwnd, szPath);
+            DoTempla(hwnd, szPath, i);
             ppidlAbsolute[j++] = ILCreateFromPath(szPath);
         }
     }
