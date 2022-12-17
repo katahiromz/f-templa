@@ -2,11 +2,7 @@
 
 struct FDT_FILE
 {
-    struct ITEM
-    {
-        string_t key;
-        string_t value;
-    };
+    typedef std::pair<string_t, string_t> ITEM;
     struct SECTION
     {
         std::vector<ITEM> items;

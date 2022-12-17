@@ -32,7 +32,6 @@ CDropSource* g_pDropSource = NULL;
 UINT g_nNotifyID = 0;
 INT g_cyDialog2 = 0;
 string_list_t g_ignore = { L"q", L"*.bin", L".git", L".svg", L".vs" };
-FDT_FILE g_fdt_file;
 std::vector<std::pair<string_t, string_t>> g_history;
 
 LPCTSTR doLoadStr(LPCTSTR text)
@@ -111,14 +110,26 @@ static void Dialog2_OnPreset(HWND hwnd)
     HWND hwndButton = GetDlgItem(hwnd, IDC_DARROW_PRESET);
     assert(hwndButton);
 
+    INT iItem = ListView_GetNextItem(g_hListView, -1, LVNI_SELECTED);
+    if (iItem == -1)
+        return;
+
+    TCHAR szItem[MAX_PATH], szPath[MAX_PATH];
+    ListView_GetItemText(g_hListView, iItem, 0, szItem, _countof(szItem));
+    StringCchCopy(szPath, _countof(szPath), g_root_dir);
+    PathAppend(szPath, szItem);
+
     RECT rc;
     ::GetWindowRect(hwndButton, &rc);
 
     HMENU hPopup = CreatePopupMenu();
     ::AppendMenu(hPopup, MF_STRING, 2, doLoadStr(IDS_SAVEPRESET));
 
+    FDT_FILE fdt_file;
+    fdt_file.load(szPath);
+
     string_list_t section_names;
-    for (auto& pair : g_fdt_file.name2section)
+    for (auto& pair : fdt_file.name2section)
     {
         if (pair.first == L"LATEST" || pair.first == L"HISTORY")
             continue;
@@ -146,6 +157,51 @@ static void Dialog2_OnPreset(HWND hwnd)
         }
         else
         {
+        }
+    }
+}
+
+static void Dialog2_OnDownArrow(HWND hwnd, INT id)
+{
+    INT index = id - IDC_DARROW_00;
+    UINT nEditFromID = IDC_FROM_00 + index;
+    UINT nEditToID = IDC_TO_00 + index;
+    RECT rc;
+    ::GetWindowRect(GetDlgItem(hwnd, id), &rc);
+
+    TCHAR szKey[128];
+    ::GetDlgItemText(hwnd, nEditFromID, szKey, _countof(szKey));
+    StrTrim(szKey, TEXT(" \t\r\n\x3000"));
+
+    string_list_t strs;
+    for (auto& pair : g_history)
+    {
+        if (pair.first == szKey)
+        {
+            if (std::find(strs.begin(), strs.end(), pair.second) == strs.end())
+                strs.push_back(pair.second);
+        }
+    }
+
+    if (strs.size())
+    {
+        HMENU hPopup = CreatePopupMenu();
+
+        INT i = 1;
+        for (auto& str : strs)
+        {
+            ::AppendMenu(hPopup, MF_STRING, i++, str.c_str());
+        }
+
+        INT iChoice = ::TrackPopupMenu(hPopup, TPM_RETURNCMD | TPM_LEFTALIGN | TPM_LEFTBUTTON,
+            rc.right, rc.top, 0, hwnd, &rc);
+        if (iChoice != 0)
+        {
+            HWND hwndEdit = GetDlgItem(hwnd, nEditToID);
+            assert(hwndEdit);
+            SetWindowText(hwndEdit, strs[iChoice - 1].c_str());
+            Edit_SetSel(hwndEdit, 0, -1);
+            SetFocus(hwndEdit);
         }
     }
 }
@@ -206,46 +262,9 @@ static void Dialog2_OnCommand(HWND hwnd, int id, HWND hwndCtl, UINT codeNotify)
     case IDC_DARROW_15:
         if (codeNotify == BN_CLICKED)
         {
-            UINT nEditFromID = IDC_FROM_00 + (id - IDC_DARROW_00);
-            UINT nEditToID = IDC_TO_00 + (id - IDC_DARROW_00);
-            RECT rc;
-            ::GetWindowRect(GetDlgItem(hwnd, id), &rc);
-
-            TCHAR szKey[128];
-            ::GetDlgItemText(hwnd, nEditFromID, szKey, _countof(szKey));
-            StrTrim(szKey, TEXT(" \t\r\n\x3000"));
-
-            string_list_t strs;
-            for (auto& pair : g_history)
-            {
-                if (pair.first == szKey)
-                {
-                    strs.push_back(pair.second);
-                }
-            }
-
-            if (strs.size())
-            {
-                HMENU hPopup = CreatePopupMenu();
-
-                INT i = 1;
-                for (auto& str : strs)
-                {
-                    ::AppendMenu(hPopup, MF_STRING, i++, str.c_str());
-                }
-
-                INT iChoice = ::TrackPopupMenu(hPopup, TPM_RETURNCMD | TPM_LEFTALIGN | TPM_LEFTBUTTON,
-                    rc.right, rc.top, 0, hwnd, &rc);
-                if (iChoice != 0)
-                {
-                    HWND hwndEdit = GetDlgItem(hwnd, nEditToID);
-                    assert(hwndEdit);
-                    SetWindowText(hwndEdit, strs[iChoice - 1].c_str());
-                    Edit_SetSel(hwndEdit, 0, -1);
-                    SetFocus(hwndEdit);
-                }
-            }
+            Dialog2_OnDownArrow(hwnd, id);
         }
+        break;
     }
 }
 
@@ -843,30 +862,35 @@ static void ReplacePresetMapping(mapping_t& mapping)
 
 static bool LoadFdtFile(LPCTSTR pszBasePath, mapping_t& mapping)
 {
+    g_history.clear();
+
     string_t path = pszBasePath;
     path += L".fdt";
 
-    if (!g_fdt_file.load(path.c_str()))
+    FDT_FILE fdt_file;
+    if (!fdt_file.load(path.c_str()))
         return false;
 
-    auto it = g_fdt_file.name2section.find(L"LATEST");
-    if (it != g_fdt_file.name2section.end())
+    auto it = fdt_file.name2section.find(L"LATEST");
+    if (it != fdt_file.name2section.end())
     {
         auto& latest_section = it->second;
         for (auto& item : latest_section.items)
         {
-            mapping[item.key] = item.value;
+            mapping[item.first] = item.second;
+            if (item.second.size())
+                g_history.push_back(item);
         }
     }
 
-    g_history.clear();
-    it = g_fdt_file.name2section.find(L"HISTORY");
-    if (it != g_fdt_file.name2section.end())
+    it = fdt_file.name2section.find(L"HISTORY");
+    if (it != fdt_file.name2section.end())
     {
         auto& history_section = it->second;
         for (auto& item : history_section.items)
         {
-            g_history.push_back(std::make_pair(item.key, item.value));
+            if (item.second.size())
+                g_history.push_back(item);
         }
     }
 
@@ -878,36 +902,24 @@ static bool SaveFdtFile(LPCTSTR pszBasePath, mapping_t& mapping)
     string_t path = pszBasePath;
     path += L".fdt";
 
-    auto& latest_section = g_fdt_file.name2section[L"LATEST"];
+    FDT_FILE fdt_file;
+    fdt_file.load(path.c_str());
+
+    auto& latest_section = fdt_file.name2section[L"LATEST"];
     for (auto& pair : mapping)
     {
-        FDT_FILE::ITEM item = { pair.first, pair.second };
-        latest_section.items.push_back(item);
+        latest_section.items.push_back(pair);
     }
     latest_section.simplify();
 
+    auto& history_section = fdt_file.name2section[L"HISTORY"];
     for (auto& pair : mapping)
     {
-retry:
-        for (auto it = g_history.begin(); it != g_history.end(); ++it)
-        {
-            if (it->first == pair.first && it->second == pair.second)
-            {
-                g_history.erase(it);
-                goto retry;
-            }
-        }
-        g_history.push_back(std::make_pair(pair.first, pair.second));
+        history_section.items.push_back(pair);
     }
+    history_section.simplify();
 
-    auto& history_section = g_fdt_file.name2section[L"HISTORY"];
-    for (auto& pair : g_history)
-    {
-        FDT_FILE::ITEM item = { pair.first, pair.second };
-        history_section.items.push_back(item);
-    }
-
-    return g_fdt_file.save(path.c_str());
+    return fdt_file.save(path.c_str());
 }
 
 static void InitSubstItem(HWND hwnd, INT iItem)

@@ -7,10 +7,20 @@
 
 void FDT_FILE::SECTION::simplify()
 {
-    auto it = std::unique(items.begin(), items.end(), [&](const ITEM& a, const ITEM& b){
-        return a.key == b.key && a.value == b.value;
-    });
-    items.erase(items.end(), it);
+retry:
+    for (size_t i = 0; i < items.size() - 1; ++i)
+    {
+        for (size_t j = i + 1; j < items.size(); ++j)
+        {
+            auto& a = items[i];
+            auto& b = items[j];
+            if (a.first == b.first && a.second == b.second)
+            {
+                items.erase(items.begin() + i);
+                goto retry;
+            }
+        }
+    }
 }
 
 bool FDT_FILE::load(LPCWSTR filename)
@@ -66,9 +76,9 @@ bool FDT_FILE::save(LPCWSTR filename)
         file.m_string += L"]\r\n";
         for (auto& pair : section.items)
         {
-            file.m_string += pair.key;
+            file.m_string += pair.first;
             file.m_string += L" = ";
-            file.m_string += pair.value;
+            file.m_string += pair.second;
             file.m_string += L"\r\n";
         }
         file.m_string += L"\r\n";
