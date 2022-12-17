@@ -6,7 +6,6 @@ struct FDT_FILE
     struct SECTION
     {
         std::vector<ITEM> items;
-        void simplify();
         void assign(const ITEM& item);
         void assign(const string_t& key, const string_t& value);
     };

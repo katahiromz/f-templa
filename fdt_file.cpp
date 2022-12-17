@@ -5,24 +5,6 @@
 #include "f-templa.hpp"
 #include "fdt_file.hpp"
 
-void FDT_FILE::SECTION::simplify()
-{
-retry:
-    for (size_t i = 0; i < items.size() - 1; ++i)
-    {
-        for (size_t j = i + 1; j < items.size(); ++j)
-        {
-            auto& a = items[i];
-            auto& b = items[j];
-            if (a.first == b.first && a.second == b.second)
-            {
-                items.erase(items.begin() + i);
-                goto retry;
-            }
-        }
-    }
-}
-
 void FDT_FILE::SECTION::assign(const ITEM& item)
 {
 retry:
