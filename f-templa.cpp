@@ -18,6 +18,7 @@
 
 #define CLASSNAME TEXT("FolderDeTemple")
 #define WM_SHELLCHANGE (WM_USER + 100)
+#define MAX_REPLACEITEMS 16
 #undef min
 #undef max
 
@@ -757,7 +758,7 @@ static void InitSubst(HWND hwnd, INT iItem)
         ::SetDlgItemText(hwndDlg, IDC_FROM_00 + i, pair.first.c_str());
         ::SetDlgItemText(hwndDlg, IDC_TO_00 + i, pair.second.c_str());
         ++i;
-        if (i >= 16)
+        if (i >= MAX_REPLACEITEMS)
             break;
     }
 }
@@ -767,7 +768,7 @@ mapping_t GetMapping(void)
     HWND hwndDlg = g_hwndDialogs[1];
 
     mapping_t mapping;
-    for (UINT i = 0; i < 16; ++i)
+    for (UINT i = 0; i < MAX_REPLACEITEMS; ++i)
     {
         TCHAR szKey[128];
         TCHAR szValue[1024];
@@ -938,8 +939,9 @@ static LRESULT OnNotify(HWND hwnd, int idFrom, LPNMHDR pnmhdr)
                 ::SendMessage(g_hStatusBar, SB_SETTEXT, 0 | 0, (LPARAM)doLoadStr(IDS_SELECTITEM));
             }
 
-            ::ShowWindow(g_hwndDialogs[0], SW_HIDE);
-            ::ShowWindow(g_hwndDialogs[1], SW_HIDE);
+            for (INT i = 0; i < _countof(g_hwndDialogs); ++i)
+                ::ShowWindow(g_hwndDialogs[i], SW_HIDE);
+
             ::ShowWindow(g_hwndDialogs[g_iDialog], SW_SHOWNOACTIVATE);
 
             ::PostMessage(hwnd, WM_SIZE, 0, 0);
