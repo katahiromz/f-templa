@@ -908,16 +908,14 @@ static bool SaveFdtFile(LPCTSTR pszBasePath, mapping_t& mapping)
     auto& latest_section = fdt_file.name2section[L"LATEST"];
     for (auto& pair : mapping)
     {
-        latest_section.items.push_back(pair);
+        latest_section.assign(pair.first, pair.second);
     }
-    latest_section.simplify();
 
     auto& history_section = fdt_file.name2section[L"HISTORY"];
     for (auto& pair : mapping)
     {
-        history_section.items.push_back(pair);
+        history_section.assign(pair);
     }
-    history_section.simplify();
 
     return fdt_file.save(path.c_str());
 }

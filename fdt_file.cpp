@@ -23,6 +23,34 @@ retry:
     }
 }
 
+void FDT_FILE::SECTION::assign(const ITEM& item)
+{
+retry:
+    for (size_t i = 0; i < items.size(); ++i)
+    {
+        if (items[i] == item)
+        {
+            items.erase(items.begin() + i);
+            goto retry;
+        }
+    }
+    items.push_back(item);
+}
+
+void FDT_FILE::SECTION::assign(const string_t& key, const string_t& value)
+{
+retry:
+    for (size_t i = 0; i < items.size(); ++i)
+    {
+        if (items[i].first == key)
+        {
+            items.erase(items.begin() + i);
+            goto retry;
+        }
+    }
+    items.push_back(std::make_pair(key, value));
+}
+
 bool FDT_FILE::load(LPCWSTR filename)
 {
     TEMPLA_FILE file;
