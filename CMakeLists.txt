@@ -24,9 +24,10 @@ add_subdirectory(templa)
 
 # f-templa.exe
 add_executable(f-templa WIN32
-    f-templa.cpp
+    fdt_file.cpp
     CDropTarget.cpp
     CDropSource.cpp
+    f-templa.cpp
     f-templa_res.rc)
 target_link_libraries(f-templa comctl32 shlwapi libtempla)
 

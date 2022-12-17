@@ -4,16 +4,13 @@
 #include <shlwapi.h>
 #include <shlobj.h>
 #include <strsafe.h>
-#include <string>
-#include <vector>
 #include <map>
-#include <unordered_map>
 #include <algorithm>
 #include <cassert>
 #include "CDropTarget.hpp"
 #include "CDropSource.hpp"
-#include "templa/templa.hpp"
 #include "f-templa.hpp"
+#include "fdt_file.hpp"
 #include "resource.h"
 
 #define CLASSNAME TEXT("FolderDeTemple")
@@ -37,6 +34,7 @@ CDropSource* g_pDropSource = NULL;
 UINT g_nNotifyID = 0;
 UINT g_cyDialog2 = 0;
 string_list_t g_ignore = { L"q", L"*.bin", L".git", L".svg", L".vs" };
+std::multimap<string_t, string_t> g_history;
 
 LPCTSTR doLoadStr(LPCTSTR text)
 {
@@ -627,22 +625,8 @@ static BOOL InitSubstDir(HWND hwnd, HWND hwndDlg, LPCTSTR pszPath, MAPPING& mapp
     return TRUE;
 }
 
-static void InitSubst(HWND hwnd, INT iItem)
+static void ReplacePresetMapping(MAPPING& mapping)
 {
-    HWND hwndDlg = g_hwndDialogs[g_iDialog];
-    ::SendMessage(hwndDlg, WM_COMMAND, ID_REFRESH_SUBST, 0);
-
-    TCHAR szItem[MAX_PATH], szPath[MAX_PATH];
-    ListView_GetItemText(g_hListView, iItem, 0, szItem, _countof(szItem));
-    StringCchCopy(szPath, _countof(szPath), g_root_dir);
-    PathAppend(szPath, szItem);
-
-    MAPPING mapping;
-    if (PathIsDirectory(szPath))
-        InitSubstDir(hwnd, hwndDlg, szPath, mapping);
-    else
-        InitSubstFile(hwnd, hwndDlg, szPath, mapping);
-
     for (auto& pair : mapping)
     {
         if (pair.first == L"{{TODAY}}")
@@ -751,6 +735,54 @@ static void InitSubst(HWND hwnd, INT iItem)
             continue;
         }
     }
+}
+
+static void InitSubstItem(HWND hwnd, INT iItem)
+{
+    HWND hwndDlg = g_hwndDialogs[g_iDialog];
+    ::SendMessage(hwndDlg, WM_COMMAND, ID_REFRESH_SUBST, 0);
+
+    TCHAR szItem[MAX_PATH], szPath[MAX_PATH];
+    ListView_GetItemText(g_hListView, iItem, 0, szItem, _countof(szItem));
+    StringCchCopy(szPath, _countof(szPath), g_root_dir);
+    PathAppend(szPath, szItem);
+
+    MAPPING mapping;
+    if (PathIsDirectory(szPath))
+        InitSubstDir(hwnd, hwndDlg, szPath, mapping);
+    else
+        InitSubstFile(hwnd, hwndDlg, szPath, mapping);
+
+    {
+        string_t path = szPath;
+        path += L".fdt";
+
+        FDT_FILE file;
+        if (file.load(path.c_str()))
+        {
+            auto it = file.name2section.find(L"LATEST");
+            if (it != file.name2section.end())
+            {
+                auto& latest_section = it->second;
+                for (auto& item : latest_section.items)
+                {
+                    mapping[item.key] = item.value;
+                }
+            }
+            g_history.clear();
+            it = file.name2section.find(L"HISTORY");
+            if (it != file.name2section.end())
+            {
+                auto& history_section = it->second;
+                for (auto& item : history_section.items)
+                {
+                    g_history.insert(std::make_pair(item.key, item.value));
+                }
+            }
+        }
+    }
+
+    ReplacePresetMapping(mapping);
 
     UINT i = 0;
     for (auto& pair : mapping)
@@ -760,6 +792,30 @@ static void InitSubst(HWND hwnd, INT iItem)
         ++i;
         if (i >= MAX_REPLACEITEMS)
             break;
+    }
+
+    {
+        string_t path = szPath;
+        path += L".fdt";
+
+        FDT_FILE file;
+        auto& latest_section = file.name2section[L"LATEST"];
+        for (auto& pair : mapping)
+        {
+            FDT_FILE::ITEM item = { pair.first, pair.second };
+            latest_section.items.push_back(item);
+        }
+        latest_section.simplify();
+
+        auto& values_section = file.name2section[L"HISTORY"];
+        for (auto& pair : mapping)
+        {
+            FDT_FILE::ITEM item = { pair.first, pair.second };
+            values_section.items.push_back(item);
+            g_history.insert(std::make_pair(pair.first, pair.second));
+        }
+
+        file.save(path.c_str());
     }
 }
 
@@ -931,7 +987,7 @@ static LRESULT OnNotify(HWND hwnd, int idFrom, LPNMHDR pnmhdr)
             {
                 g_iDialog = 1;
                 ::SendMessage(g_hStatusBar, SB_SETTEXT, 0 | 0, (LPARAM)doLoadStr(IDS_TYPESUBST));
-                InitSubst(hwnd, iItem);
+                InitSubstItem(hwnd, iItem);
             }
             else
             {
@@ -1065,7 +1121,7 @@ WinMain(HINSTANCE   hInstance,
     DWORD style = WS_OVERLAPPEDWINDOW;
     DWORD exstyle = 0;
     HWND hwnd = ::CreateWindowEx(exstyle, CLASSNAME, doLoadStr(IDS_APPVERSION), style,
-                                 CW_USEDEFAULT, CW_USEDEFAULT, 500, 400,
+                                 CW_USEDEFAULT, CW_USEDEFAULT, 500, 350,
                                  NULL, NULL, hInstance, NULL);
     if (!hwnd)
     {
