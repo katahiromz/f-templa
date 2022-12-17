@@ -3,6 +3,7 @@
 #include <shlwapi.h>
 #include <strsafe.h>
 #include "CDropTarget.hpp"
+#include "f-templa.hpp"
 #include "resource.h"
 
 CDropTarget::CDropTarget(HWND hwnd)
@@ -100,8 +101,6 @@ CDropTarget::DragLeave()
     return S_OK;
 }
 
-extern TCHAR g_szRootDir[MAX_PATH];
-
 inline LPBYTE byte_cast(LPIDA pIDA, UINT p)
 {
     return reinterpret_cast<LPBYTE>(pIDA) + pIDA->aoffset[p];
@@ -164,7 +163,7 @@ CDropTarget::Drop(IDataObject *pDataObj, DWORD grfKeyState, POINTL pt, DWORD *pd
 
         SHGetPathFromIDList(pidl, szSrcFilePath);
 
-        StringCchCopy(szDestFilePath, _countof(szDestFilePath), g_szRootDir);
+        StringCchCopy(szDestFilePath, _countof(szDestFilePath), g_root_dir);
         PathAppend(szDestFilePath, PathFindFileName(szSrcFilePath));
 
         SHFILEOPSTRUCT op = { m_hwnd, FO_COPY, szSrcFilePath, szDestFilePath };

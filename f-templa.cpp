@@ -13,6 +13,7 @@
 #include "CDropTarget.hpp"
 #include "CDropSource.hpp"
 #include "templa/templa.hpp"
+#include "f-templa.hpp"
 #include "resource.h"
 
 #define CLASSNAME TEXT("FolderDeTemple")
@@ -28,7 +29,7 @@ HIMAGELIST g_hImageList = NULL;
 INT g_iDialog = 0;
 HWND g_hwndDialogs[2] = { NULL };
 HWND g_hStatusBar = NULL;
-TCHAR g_szRootDir[MAX_PATH] = TEXT("");
+TCHAR g_root_dir[MAX_PATH] = TEXT("");
 TCHAR g_temp_dir[MAX_PATH + 1] = TEXT("");
 CDropTarget* g_pDropTarget = NULL;
 CDropSource* g_pDropSource = NULL;
@@ -55,9 +56,9 @@ static void InitListView(HWND hListView, HIMAGELIST hImageList, LPCTSTR pszDir)
 {
     TCHAR spec[MAX_PATH];
 
-    GetFullPathName(pszDir, _countof(g_szRootDir), g_szRootDir, NULL);
+    GetFullPathName(pszDir, _countof(g_root_dir), g_root_dir, NULL);
 
-    StringCchCopy(spec, _countof(spec), g_szRootDir);
+    StringCchCopy(spec, _countof(spec), g_root_dir);
     PathAddBackslash(spec);
     StringCchCat(spec, _countof(spec), TEXT("*"));
 
@@ -402,13 +403,13 @@ BOOL ShowContextMenu(HWND hwnd, INT iItem, INT xPos, INT yPos, UINT uFlags = CMF
 
     if (iItem == -1)
     {
-        StringCchCopy(szPath, _countof(szPath), g_szRootDir);
+        StringCchCopy(szPath, _countof(szPath), g_root_dir);
     }
     else
     {
         ListView_EnsureVisible(g_hListView, iItem, FALSE);
         ListView_GetItemText(g_hListView, iItem, 0, szItem, _countof(szItem));
-        StringCchCopy(szPath, _countof(szPath), g_szRootDir);
+        StringCchCopy(szPath, _countof(szPath), g_root_dir);
         PathAppend(szPath, szItem);
     }
 
@@ -629,7 +630,7 @@ static void InitSubst(HWND hwnd, INT iItem)
 
     TCHAR szItem[MAX_PATH], szPath[MAX_PATH];
     ListView_GetItemText(g_hListView, iItem, 0, szItem, _countof(szItem));
-    StringCchCopy(szPath, _countof(szPath), g_szRootDir);
+    StringCchCopy(szPath, _countof(szPath), g_root_dir);
     PathAppend(szPath, szItem);
 
     MAPPING mapping;
@@ -837,7 +838,7 @@ static void OnBeginDrag(HWND hwnd)
         {
             TCHAR szPath[MAX_PATH], szItem[MAX_PATH];
             ListView_GetItemText(g_hListView, i, 0, szItem, _countof(szItem));
-            StringCchCopy(szPath, _countof(szPath), g_szRootDir);
+            StringCchCopy(szPath, _countof(szPath), g_root_dir);
             PathAppend(szPath, szItem);
             DoTempla(hwnd, szPath);
             ppidlAbsolute[j++] = ILCreateFromPath(szPath);
@@ -897,7 +898,7 @@ static LRESULT OnNotify(HWND hwnd, int idFrom, LPNMHDR pnmhdr)
                     TCHAR szPath[MAX_PATH], szItem[MAX_PATH];
                     ZeroMemory(szPath, sizeof(szPath));
 
-                    StringCchCopy(szPath, _countof(szPath), g_szRootDir);
+                    StringCchCopy(szPath, _countof(szPath), g_root_dir);
                     ListView_GetItemText(g_hListView, iItem, 0, szItem, _countof(szItem));
                     PathAppend(szPath, szItem);
 
@@ -966,7 +967,7 @@ static LRESULT OnShellChange(HWND hwnd, WPARAM wParam, LPARAM lParam)
     SHGetPathFromIDList(ppidlAbsolute[0], szPath);
     PathRemoveFileSpec(szPath);
 
-    if (lstrcmpi(szPath, g_szRootDir) == 0)
+    if (lstrcmpi(szPath, g_root_dir) == 0)
     {
         SHGetPathFromIDList(ppidlAbsolute[0], szPath);
         LPTSTR pszFileName = PathFindFileName(szPath);
