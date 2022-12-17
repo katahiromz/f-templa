@@ -920,6 +920,28 @@ static bool SaveFdtFile(LPCTSTR pszBasePath, mapping_t& mapping)
     return fdt_file.save(path.c_str());
 }
 
+mapping_t GetMapping(void)
+{
+    HWND hwndDlg = g_hwndDialogs[1];
+
+    mapping_t mapping;
+    for (UINT i = 0; i < MAX_REPLACEITEMS; ++i)
+    {
+        TCHAR szKey[128];
+        TCHAR szValue[1024];
+        ::GetDlgItemText(hwndDlg, IDC_FROM_00 + i, szKey, _countof(szKey));
+        ::GetDlgItemText(hwndDlg, IDC_TO_00 + i, szValue, _countof(szValue));
+        StrTrim(szKey, TEXT(" \t\r\n\x3000"));
+        if (szKey[0] == 0)
+            continue;
+
+        StrTrim(szValue, TEXT(" \t\r\n\x3000"));
+        mapping[szKey] = szValue;
+    }
+
+    return mapping;
+}
+
 static void InitSubstItem(HWND hwnd, INT iItem)
 {
     HWND hwndDlg = g_hwndDialogs[g_iDialog];
@@ -951,28 +973,6 @@ static void InitSubstItem(HWND hwnd, INT iItem)
     }
 
     SaveFdtFile(szPath, mapping);
-}
-
-mapping_t GetMapping(void)
-{
-    HWND hwndDlg = g_hwndDialogs[1];
-
-    mapping_t mapping;
-    for (UINT i = 0; i < MAX_REPLACEITEMS; ++i)
-    {
-        TCHAR szKey[128];
-        TCHAR szValue[1024];
-        ::GetDlgItemText(hwndDlg, IDC_FROM_00 + i, szKey, _countof(szKey));
-        ::GetDlgItemText(hwndDlg, IDC_TO_00 + i, szValue, _countof(szValue));
-        StrTrim(szKey, TEXT(" \t\r\n\x3000"));
-        if (szKey[0] == 0)
-            continue;
-
-        StrTrim(szValue, TEXT(" \t\r\n\x3000"));
-        mapping[szKey] = szValue;
-    }
-
-    return mapping;
 }
 
 BOOL DoTempla(HWND hwnd, LPTSTR pszPath, INT iItem)
@@ -1118,17 +1118,30 @@ static LRESULT OnNotify(HWND hwnd, int idFrom, LPNMHDR pnmhdr)
 
     case LVN_ITEMCHANGED:
         {
+            static INT s_iItemOld = -1;
             INT iItem = ListView_GetNextItem(g_hListView, -1, LVNI_SELECTED);
             if (iItem != -1)
             {
                 g_iDialog = 1;
                 ::SendMessage(g_hStatusBar, SB_SETTEXT, 0 | 0, (LPARAM)doLoadStr(IDS_TYPESUBST));
                 InitSubstItem(hwnd, iItem);
+                s_iItemOld = iItem;
             }
             else
             {
+                if (g_iDialog == 1 && s_iItemOld != -1)
+                {
+                    TCHAR szItem[MAX_PATH], szPath[MAX_PATH];
+                    ListView_GetItemText(g_hListView, s_iItemOld, 0, szItem, _countof(szItem));
+                    StringCchCopy(szPath, _countof(szPath), g_root_dir);
+                    PathAppend(szPath, szItem);
+
+                    mapping_t mapping = GetMapping();
+                    SaveFdtFile(szPath, mapping);
+                }
                 g_iDialog = 0;
                 ::SendMessage(g_hStatusBar, SB_SETTEXT, 0 | 0, (LPARAM)doLoadStr(IDS_SELECTITEM));
+                s_iItemOld = iItem;
             }
 
             for (INT i = 0; i < _countof(g_hwndDialogs); ++i)
