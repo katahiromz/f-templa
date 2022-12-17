@@ -1008,7 +1008,7 @@ BOOL DoTempla(HWND hwnd, LPTSTR pszPath, INT iItem)
     return TRUE;
 }
 
-static void OnBeginDrag(HWND hwnd)
+static void OnBeginDrag(HWND hwnd, NM_LISTVIEW* pListView)
 {
     INT cSelected = ListView_GetSelectedCount(g_hListView);
     if (cSelected == 0)
@@ -1165,7 +1165,7 @@ static LRESULT OnNotify(HWND hwnd, int idFrom, LPNMHDR pnmhdr)
 
     case LVN_BEGINDRAG:
     case LVN_BEGINRDRAG:
-        OnBeginDrag(hwnd);
+        OnBeginDrag(hwnd, (NM_LISTVIEW*)pnmhdr);
         break;
     }
 
