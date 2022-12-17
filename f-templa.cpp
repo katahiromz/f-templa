@@ -977,7 +977,7 @@ static LRESULT OnShellChange(HWND hwnd, WPARAM wParam, LPARAM lParam)
         {
         case SHCNE_CREATE:
         case SHCNE_MKDIR:
-            if (iItem == -1)
+            if (iItem == -1 && !templa_wildcard(pszFileName, L"*.fdt"))
             {
                 DWORD dwAttrs = ((lEvent == SHCNE_MKDIR) ? FILE_ATTRIBUTE_DIRECTORY : 0);
                 SHFILEINFO info;
@@ -997,8 +997,14 @@ static LRESULT OnShellChange(HWND hwnd, WPARAM wParam, LPARAM lParam)
             break;
         case SHCNE_RENAMEFOLDER:
         case SHCNE_RENAMEITEM:
-            SHGetPathFromIDList(ppidlAbsolute[1], szPath);
-            ListView_SetItemText(g_hListView, iItem, 0, PathFindFileName(szPath));
+            {
+                SHGetPathFromIDList(ppidlAbsolute[1], szPath);
+                string_t filename = PathFindFileName(szPath);
+                if (templa_wildcard(filename, L"*.fdt"))
+                    ListView_DeleteItem(g_hListView, iItem);
+                else
+                    ListView_SetItemText(g_hListView, iItem, 0, &filename[0]);
+            }
             break;
         }
     }
