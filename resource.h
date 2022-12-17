@@ -92,6 +92,7 @@
 #define IDS_SECOND                          114
 #define IDS_WEEKDAY                         115
 #define IDS_WEEKDAYS                        116
+#define IDS_SAVEPRESET                      117
 
 #define ID_REFRESH_SUBST                    100
 

@@ -7,11 +7,8 @@
 
 void FDT_FILE::SECTION::simplify()
 {
-    std::stable_sort(items.begin(), items.end(), [&](const ITEM& a, const ITEM& b){
-        return a.key == b.key;
-    });
     auto it = std::unique(items.begin(), items.end(), [&](const ITEM& a, const ITEM& b){
-        return a.key == b.key;
+        return a.key == b.key && a.value == b.value;
     });
     items.erase(items.end(), it);
 }

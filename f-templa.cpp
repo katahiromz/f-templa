@@ -30,8 +30,9 @@ TCHAR g_temp_dir[MAX_PATH + 1] = TEXT("");
 CDropTarget* g_pDropTarget = NULL;
 CDropSource* g_pDropSource = NULL;
 UINT g_nNotifyID = 0;
-UINT g_cyDialog2 = 0;
+INT g_cyDialog2 = 0;
 string_list_t g_ignore = { L"q", L"*.bin", L".git", L".svg", L".vs" };
+FDT_FILE g_fdt_file;
 std::vector<std::pair<string_t, string_t>> g_history;
 
 LPCTSTR doLoadStr(LPCTSTR text)
@@ -105,6 +106,50 @@ static BOOL Dialog2_OnInitDialog(HWND hwnd, HWND hwndFocus, LPARAM lParam)
     return TRUE;
 }
 
+static void Dialog2_OnPreset(HWND hwnd)
+{
+    HWND hwndButton = GetDlgItem(hwnd, IDC_DARROW_PRESET);
+    assert(hwndButton);
+
+    RECT rc;
+    ::GetWindowRect(hwndButton, &rc);
+
+    HMENU hPopup = CreatePopupMenu();
+    ::AppendMenu(hPopup, MF_STRING, 2, doLoadStr(IDS_SAVEPRESET));
+
+    string_list_t section_names;
+    for (auto& pair : g_fdt_file.name2section)
+    {
+        if (pair.first == L"LATEST" || pair.first == L"HISTORY")
+            continue;
+
+        section_names.push_back(pair.first);
+    }
+
+    if (section_names.size())
+    {
+        ::AppendMenu(hPopup, MF_SEPARATOR, 0, NULL);
+
+        INT i = 1000;
+        for (auto& name : section_names)
+        {
+            ::AppendMenu(hPopup, MF_STRING, i++, name.c_str());
+        }
+    }
+
+    INT iChoice = ::TrackPopupMenu(hPopup, TPM_RETURNCMD | TPM_LEFTALIGN | TPM_LEFTBUTTON,
+        rc.right, rc.top, 0, hwnd, &rc);
+    if (iChoice != 0)
+    {
+        if (iChoice < 1000)
+        {
+        }
+        else
+        {
+        }
+    }
+}
+
 static void Dialog2_OnCommand(HWND hwnd, int id, HWND hwndCtl, UINT codeNotify)
 {
     switch (id)
@@ -140,6 +185,9 @@ static void Dialog2_OnCommand(HWND hwnd, int id, HWND hwndCtl, UINT codeNotify)
             ::SetFocus(hwndEdit);
         }
         break;
+    case IDC_DARROW_PRESET:
+        Dialog2_OnPreset(hwnd);
+        break;
     case IDC_DARROW_00:
     case IDC_DARROW_01:
     case IDC_DARROW_02:
@@ -161,11 +209,10 @@ static void Dialog2_OnCommand(HWND hwnd, int id, HWND hwndCtl, UINT codeNotify)
             UINT nEditFromID = IDC_FROM_00 + (id - IDC_DARROW_00);
             UINT nEditToID = IDC_TO_00 + (id - IDC_DARROW_00);
             RECT rc;
-            GetWindowRect(GetDlgItem(hwnd, id), &rc);
+            ::GetWindowRect(GetDlgItem(hwnd, id), &rc);
 
             TCHAR szKey[128];
-            TCHAR szValue[1024];
-            GetDlgItemText(hwnd, nEditFromID, szKey, _countof(szKey));
+            ::GetDlgItemText(hwnd, nEditFromID, szKey, _countof(szKey));
             StrTrim(szKey, TEXT(" \t\r\n\x3000"));
 
             string_list_t strs;
@@ -187,7 +234,7 @@ static void Dialog2_OnCommand(HWND hwnd, int id, HWND hwndCtl, UINT codeNotify)
                     ::AppendMenu(hPopup, MF_STRING, i++, str.c_str());
                 }
 
-                INT iChoice = TrackPopupMenu(hPopup, TPM_RETURNCMD | TPM_LEFTALIGN | TPM_LEFTBUTTON,
+                INT iChoice = ::TrackPopupMenu(hPopup, TPM_RETURNCMD | TPM_LEFTALIGN | TPM_LEFTBUTTON,
                     rc.right, rc.top, 0, hwnd, &rc);
                 if (iChoice != 0)
                 {
@@ -799,12 +846,11 @@ static bool LoadFdtFile(LPCTSTR pszBasePath, mapping_t& mapping)
     string_t path = pszBasePath;
     path += L".fdt";
 
-    FDT_FILE file;
-    if (!file.load(path.c_str()))
+    if (!g_fdt_file.load(path.c_str()))
         return false;
 
-    auto it = file.name2section.find(L"LATEST");
-    if (it != file.name2section.end())
+    auto it = g_fdt_file.name2section.find(L"LATEST");
+    if (it != g_fdt_file.name2section.end())
     {
         auto& latest_section = it->second;
         for (auto& item : latest_section.items)
@@ -814,8 +860,8 @@ static bool LoadFdtFile(LPCTSTR pszBasePath, mapping_t& mapping)
     }
 
     g_history.clear();
-    it = file.name2section.find(L"HISTORY");
-    if (it != file.name2section.end())
+    it = g_fdt_file.name2section.find(L"HISTORY");
+    if (it != g_fdt_file.name2section.end())
     {
         auto& history_section = it->second;
         for (auto& item : history_section.items)
@@ -832,8 +878,7 @@ static bool SaveFdtFile(LPCTSTR pszBasePath, mapping_t& mapping)
     string_t path = pszBasePath;
     path += L".fdt";
 
-    FDT_FILE file;
-    auto& latest_section = file.name2section[L"LATEST"];
+    auto& latest_section = g_fdt_file.name2section[L"LATEST"];
     for (auto& pair : mapping)
     {
         FDT_FILE::ITEM item = { pair.first, pair.second };
@@ -855,14 +900,14 @@ retry:
         g_history.push_back(std::make_pair(pair.first, pair.second));
     }
 
-    auto& history_section = file.name2section[L"HISTORY"];
+    auto& history_section = g_fdt_file.name2section[L"HISTORY"];
     for (auto& pair : g_history)
     {
         FDT_FILE::ITEM item = { pair.first, pair.second };
         history_section.items.push_back(item);
     }
 
-    return file.save(path.c_str());
+    return g_fdt_file.save(path.c_str());
 }
 
 static void InitSubstItem(HWND hwnd, INT iItem)
@@ -973,7 +1018,7 @@ static void OnBeginDrag(HWND hwnd)
     }
 
     INT cItems = ListView_GetItemCount(g_hListView);
-    for (UINT i = 0, j = 0; i < cItems; ++i)
+    for (INT i = 0, j = 0; i < cItems; ++i)
     {
         if (ListView_GetItemState(g_hListView, i, LVIS_SELECTED))
         {
@@ -989,7 +1034,7 @@ static void OnBeginDrag(HWND hwnd)
     IShellFolder* pShellFolder = NULL;
     SHBindToParent(ppidlAbsolute[0], IID_PPV_ARGS(&pShellFolder), NULL);
 
-    for (UINT i = 0; i < cSelected; i++)
+    for (INT i = 0; i < cSelected; i++)
         ppidlChild[i] = ILFindLastID(ppidlAbsolute[i]);
 
     IDataObject *pDataObject = NULL;
@@ -1001,7 +1046,7 @@ static void OnBeginDrag(HWND hwnd)
         DoDragDrop(pDataObject, g_pDropSource, DROPEFFECT_COPY, &dwEffect);
     }
 
-    for (UINT i = 0; i < cSelected; ++i)
+    for (INT i = 0; i < cSelected; ++i)
         CoTaskMemFree(ppidlAbsolute[i]);
 
     CoTaskMemFree(ppidlAbsolute);
