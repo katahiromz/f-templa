@@ -532,30 +532,39 @@ static void Dialog2_OnDownArrow(HWND hwnd, INT id)
 
     HMENU hMenu = CreatePopupMenu();
 
+    ::AppendMenu(hMenu, MF_STRING, ID_UPDATEVALUE, doLoadStr(IDS_UPDATEVALUE));
+    ::AppendMenu(hMenu, MF_STRING, ID_RESET, doLoadStr(IDS_RESET));
+
     const INT c_history_first = 1000;
     if (strs.size() || szValue[0])
     {
-        INT i = c_history_first;
         BOOL bFound = FALSE;
-        for (auto& str : strs)
+        if (strs.size())
         {
-            ::AppendMenu(hMenu, MF_STRING, i++, str.c_str());
-            if (str == szValue)
-                bFound = TRUE;
+            ::AppendMenu(hMenu, MF_SEPARATOR, 0, L"");
+
+            INT i = c_history_first;
+            for (auto& str : strs)
+            {
+                ::AppendMenu(hMenu, MF_STRING, i++, str.c_str());
+                if (str == szValue)
+                    bFound = TRUE;
+            }
         }
 
-        ::AppendMenu(hMenu, MF_SEPARATOR, 0, L"");
 
         if (!bFound && szValue[0])
         {
+            ::AppendMenu(hMenu, MF_SEPARATOR, 0, L"");
+
             TCHAR szItem[1024];
             StringCchPrintf(szItem, _countof(szItem), doLoadStr(IDS_ADDITEM), szValue);
             ::AppendMenu(hMenu, MF_STRING, ID_ADDITEM, szItem);
         }
-    }
 
-    ::AppendMenu(hMenu, MF_STRING, ID_DELETEKEYANDVALUE, doLoadStr(IDS_DELETEKEYVALUE));
-    ::AppendMenu(hMenu, MF_STRING, ID_RESET, doLoadStr(IDS_RESET));
+        ::AppendMenu(hMenu, MF_SEPARATOR, 0, L"");
+        ::AppendMenu(hMenu, MF_STRING, ID_DELETEKEYANDVALUE, doLoadStr(IDS_DELETEKEYVALUE));
+    }
 
     INT iChoice = ::TrackPopupMenu(hMenu, TPM_RETURNCMD | TPM_LEFTALIGN | TPM_LEFTBUTTON,
                                    rc.right, rc.top, 0, hwnd, &rc);
@@ -574,7 +583,7 @@ static void Dialog2_OnDownArrow(HWND hwnd, INT id)
         {
             g_history.push_back(std::make_pair(szKey, szValue));
         }
-        else if (iChoice == ID_RESET)
+        else if (iChoice == ID_UPDATEVALUE)
         {
             std::pair<string_t, string_t> pair;
             pair.first = szKey;
@@ -586,14 +595,29 @@ static void Dialog2_OnDownArrow(HWND hwnd, INT id)
             Edit_SetSel(hwndEdit, 0, -1);
             SetFocus(hwndEdit);
         }
-        else if (iChoice == ID_DELETEKEYANDVALUE)
+        else if (iChoice == ID_RESET || iChoice == ID_DELETEKEYANDVALUE)
         {
-            ::SetDlgItemText(hwnd, nEditFromID, NULL);
-            ::SetDlgItemText(hwnd, nEditToID, NULL);
-
             INT iItem = ListView_GetNextItem(g_hListView, -1, LVNI_SELECTED);
             if (iItem == -1)
                 return;
+
+            if (iChoice == ID_DELETEKEYANDVALUE)
+            {
+                ::SetDlgItemText(hwnd, nEditFromID, NULL);
+                ::SetDlgItemText(hwnd, nEditToID, NULL);
+            }
+            else if (iChoice == ID_RESET)
+            {
+                std::pair<string_t, string_t> pair;
+                pair.first = szKey;
+                ReplacePair(pair.first, pair.second);
+
+                HWND hwndEdit = ::GetDlgItem(hwnd, nEditToID);
+                assert(hwndEdit);
+                ::SetWindowText(hwndEdit, pair.second.c_str());
+                Edit_SetSel(hwndEdit, 0, -1);
+                SetFocus(hwndEdit);
+            }
 
             TCHAR szItem[MAX_PATH], szPath[MAX_PATH];
             ListView_GetItemText(g_hListView, iItem, 0, szItem, _countof(szItem));
@@ -610,6 +634,11 @@ static void Dialog2_OnDownArrow(HWND hwnd, INT id)
                 {
                     auto& section = pair.second;
                     section.erase(szKey);
+
+                    if (iChoice == ID_RESET)
+                    {
+                        section.assign(szKey, szValue);
+                    }
                 }
                 fdt_file.save(path.c_str());
             }
