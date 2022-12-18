@@ -27,6 +27,7 @@ add_executable(f-templa WIN32
     fdt_file.cpp
     CDropTarget.cpp
     CDropSource.cpp
+    CenterWindowDx.cpp
     InputBox.cpp
     f-templa.cpp
     f-templa_res.rc)
