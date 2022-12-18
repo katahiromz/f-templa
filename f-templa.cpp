@@ -659,7 +659,7 @@ static void DeleteTempDir(HWND hwnd)
     }
 }
 
-mapping_t GetMapping(void)
+mapping_t DoGetMapping(void)
 {
     HWND hwndDlg = g_hwndDialogs[1];
 
@@ -715,7 +715,7 @@ static void OnDeSelectItem(HWND hwnd, INT iItem)
     StringCchCopy(szPath, _countof(szPath), g_root_dir);
     PathAppend(szPath, szItem);
 
-    mapping_t mapping = GetMapping();
+    mapping_t mapping = DoGetMapping();
     SaveFdtFile(szPath, mapping);
 }
 
@@ -1034,7 +1034,7 @@ BOOL DoTempla(HWND hwnd, LPTSTR pszPath, INT iItem)
 
     StringCchCopy(g_temp_dir, _countof(g_temp_dir), temp_dir);
 
-    mapping_t mapping = GetMapping();
+    mapping_t mapping = DoGetMapping();
     SaveFdtFile(pszPath, mapping);
 
     templa(pszPath, temp_dir, mapping, g_ignore);
