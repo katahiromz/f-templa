@@ -539,14 +539,10 @@ static void Dialog2_OnDownArrow(HWND hwnd, INT id)
             StringCchPrintf(szItem, _countof(szItem), doLoadStr(IDS_ADDITEM), szValue);
             ::AppendMenu(hMenu, MF_STRING, ID_ADDITEM, szItem);
         }
+    }
 
-        ::AppendMenu(hMenu, MF_STRING, ID_DELETEKEYANDVALUE, doLoadStr(IDS_DELETEKEYVALUE));
-        ::AppendMenu(hMenu, MF_STRING, ID_RESET, doLoadStr(IDS_RESET));
-    }
-    else
-    {
-        ::AppendMenu(hMenu, MF_STRING, ID_DELETEKEYANDVALUE, doLoadStr(IDS_DELETEKEYVALUE));
-    }
+    ::AppendMenu(hMenu, MF_STRING, ID_DELETEKEYANDVALUE, doLoadStr(IDS_DELETEKEYVALUE));
+    ::AppendMenu(hMenu, MF_STRING, ID_RESET, doLoadStr(IDS_RESET));
 
     INT iChoice = ::TrackPopupMenu(hMenu, TPM_RETURNCMD | TPM_LEFTALIGN | TPM_LEFTBUTTON,
                                    rc.right, rc.top, 0, hwnd, &rc);
@@ -775,11 +771,13 @@ static void Dialog2_OnMouseWheel(HWND hwnd, int xPos, int yPos, int zDelta, UINT
 {
     if (zDelta > 0)
     {
-        ::PostMessage(hwnd, WM_VSCROLL, MAKEWPARAM(SB_LINEUP, 0), 0);
+        for (INT i = 0; i < 3; ++i)
+            ::PostMessage(hwnd, WM_VSCROLL, MAKEWPARAM(SB_LINEUP, 0), 0);
     }
     else if (zDelta < 0)
     {
-        ::PostMessage(hwnd, WM_VSCROLL, MAKEWPARAM(SB_LINEDOWN, 0), 0);
+        for (INT i = 0; i < 3; ++i)
+            ::PostMessage(hwnd, WM_VSCROLL, MAKEWPARAM(SB_LINEDOWN, 0), 0);
     }
 }
 
