@@ -212,6 +212,115 @@ PresetDialogProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
     return 0;
 }
 
+static void ReplacePair(const string_t& first, string_t& second)
+{
+    if (first == L"{{TODAY}}")
+    {
+        SYSTEMTIME st;
+        ::GetLocalTime(&st);
+        TCHAR szText[128];
+        StringCchPrintf(szText, _countof(szText), TEXT("%04u-%02u-%02u"),
+            st.wYear,
+            st.wMonth,
+            st.wDay);
+        second += szText;
+        return;
+    }
+    if (first == L"{{NOW}}")
+    {
+        SYSTEMTIME st;
+        ::GetLocalTime(&st);
+        TCHAR szText[128];
+        StringCchPrintf(szText, _countof(szText), TEXT("%02u:%02u:%02u"),
+            st.wHour,
+            st.wMinute,
+            st.wSecond);
+        second += szText;
+        return;
+    }
+    if (first == L"{{THISYEAR}}")
+    {
+        SYSTEMTIME st;
+        ::GetLocalTime(&st);
+        second = std::to_wstring(st.wYear);
+        return;
+    }
+    if (first == L"{{USER}}")
+    {
+        TCHAR szUser[MAX_PATH];
+        DWORD cchUser = _countof(szUser);
+        ::GetUserName(szUser, &cchUser);
+        second = szUser;
+        return;
+    }
+    if (first == L"{{WEEKDAY}}")
+    {
+        SYSTEMTIME st;
+        ::GetLocalTime(&st);
+        switch (st.wDayOfWeek)
+        {
+        case 0: second = L"Sun"; break;
+        case 1: second = L"Mon"; break;
+        case 2: second = L"Tue"; break;
+        case 3: second = L"Wed"; break;
+        case 4: second = L"Thu"; break;
+        case 5: second = L"Fri"; break;
+        case 6: second = L"Sat"; break;
+        default: second.clear(); break;
+        }
+        return;
+    }
+    if (first == doLoadStr(IDS_TODAY))
+    {
+        SYSTEMTIME st;
+        ::GetLocalTime(&st);
+        second = std::to_wstring(st.wYear);
+        second += doLoadStr(IDS_YEAR);
+        second += std::to_wstring(st.wMonth);
+        second += doLoadStr(IDS_MONTH);
+        second += std::to_wstring(st.wDay);
+        second += doLoadStr(IDS_DAY);
+        return;
+    }
+    if (first == doLoadStr(IDS_NOW))
+    {
+        SYSTEMTIME st;
+        ::GetLocalTime(&st);
+        second = std::to_wstring(st.wHour);
+        second += doLoadStr(IDS_HOUR);
+        second += std::to_wstring(st.wMinute);
+        second += doLoadStr(IDS_MINUTE);
+        second += std::to_wstring(st.wSecond);
+        second += doLoadStr(IDS_SECOND);
+        return;
+    }
+    if (first == doLoadStr(IDS_THISYEAR))
+    {
+        SYSTEMTIME st;
+        ::GetLocalTime(&st);
+        second = std::to_wstring(st.wYear);
+        second += doLoadStr(IDS_YEAR);
+        return;
+    }
+    if (first == doLoadStr(IDS_USERNAME) || first == doLoadStr(IDS_USERNAME2))
+    {
+        TCHAR szUser[MAX_PATH];
+        DWORD cchUser = _countof(szUser);
+        ::GetUserName(szUser, &cchUser);
+        second = szUser;
+        return;
+    }
+    if (first == doLoadStr(IDS_WEEKDAY))
+    {
+        SYSTEMTIME st;
+        ::GetLocalTime(&st);
+        assert(st.wDayOfWeek < 7);
+        second.clear();
+        second += doLoadStr(IDS_WEEKDAYS)[st.wDayOfWeek];
+        return;
+    }
+}
+
 static void Dialog2_OnPreset(HWND hwnd)
 {
     HWND hwndButton = GetDlgItem(hwnd, IDC_DARROW_PRESET);
@@ -247,11 +356,11 @@ static void Dialog2_OnPreset(HWND hwnd)
         section_names.push_back(pair.first);
     }
 
+    ::AppendMenu(hMenu, MF_SEPARATOR, 0, NULL);
+
     const INT c_section_first = 1000;
     if (section_names.size())
     {
-        ::AppendMenu(hMenu, MF_SEPARATOR, 0, NULL);
-
         std::sort(section_names.begin(), section_names.end());
 
         INT i = c_section_first;
@@ -263,6 +372,8 @@ static void Dialog2_OnPreset(HWND hwnd)
         ::AppendMenu(hMenu, MF_SEPARATOR, 0, NULL);
         ::AppendMenu(hMenu, MF_STRING, ID_EDITPRESET, doLoadStr(IDS_EDITPRESET));
     }
+
+    ::AppendMenu(hMenu, MF_STRING, ID_RESET, doLoadStr(IDS_RESET));
 
     INT iChoice = ::TrackPopupMenu(hMenu, TPM_RETURNCMD | TPM_LEFTALIGN | TPM_LEFTBUTTON,
                                    rc.right, rc.top, 0, hwnd, &rc);
@@ -343,6 +454,34 @@ static void Dialog2_OnPreset(HWND hwnd)
             fdt_file.save(path.c_str());
         }
     }
+
+    if (iChoice == ID_RESET)
+    {
+        ::DeleteFile(path.c_str());
+
+        mapping_t mapping;
+        if (PathIsDirectory(szPath))
+            Dialog2_InitSubstDir(hwnd, szPath, mapping);
+        else
+            Dialog2_InitSubstFile(hwnd, szPath, mapping);
+
+        for (auto& pair : mapping)
+        {
+            ReplacePair(pair.first, pair.second);
+        }
+
+        ::SendMessage(g_hwndDialogs[1], WM_COMMAND, ID_REFRESH_SUBST, 0);
+
+        UINT i = 0;
+        for (auto& pair : mapping)
+        {
+            ::SetDlgItemText(hwnd, IDC_FROM_00 + i, pair.first.c_str());
+            ::SetDlgItemText(hwnd, IDC_TO_00 + i, pair.second.c_str());
+            ++i;
+            if (i >= MAX_REPLACEITEMS)
+                break;
+        }
+    }
 }
 
 static void Dialog2_OnDownArrow(HWND hwnd, INT id)
@@ -395,10 +534,11 @@ static void Dialog2_OnDownArrow(HWND hwnd, INT id)
         }
 
         ::AppendMenu(hMenu, MF_STRING, ID_DELETEKEYANDVALUE, doLoadStr(IDS_DELETEKEYVALUE));
+        ::AppendMenu(hMenu, MF_STRING, ID_RESET, doLoadStr(IDS_RESET));
     }
     else
     {
-        ::AppendMenu(hMenu, MF_STRING | MF_GRAYED, 0, doLoadStr(IDS_NONE));
+        ::AppendMenu(hMenu, MF_STRING, ID_DELETEKEYANDVALUE, doLoadStr(IDS_DELETEKEYVALUE));
     }
 
     INT iChoice = ::TrackPopupMenu(hMenu, TPM_RETURNCMD | TPM_LEFTALIGN | TPM_LEFTBUTTON,
@@ -417,6 +557,18 @@ static void Dialog2_OnDownArrow(HWND hwnd, INT id)
         else if (iChoice == ID_ADDITEM)
         {
             g_history.push_back(std::make_pair(szKey, szValue));
+        }
+        else if (iChoice == ID_RESET)
+        {
+            std::pair<string_t, string_t> pair;
+            pair.first = szKey;
+            ReplacePair(pair.first, pair.second);
+
+            HWND hwndEdit = ::GetDlgItem(hwnd, nEditToID);
+            assert(hwndEdit);
+            ::SetWindowText(hwndEdit, pair.second.c_str());
+            Edit_SetSel(hwndEdit, 0, -1);
+            SetFocus(hwndEdit);
         }
         else if (iChoice == ID_DELETEKEYANDVALUE)
         {
@@ -887,7 +1039,7 @@ static void DeleteTempDir(HWND hwnd)
     }
 }
 
-static bool SaveFdtFile(LPCTSTR pszBasePath, mapping_t& mapping)
+bool SaveFdtFile(LPCTSTR pszBasePath, mapping_t& mapping)
 {
     string_t path = pszBasePath;
     path += L".fdt";
@@ -970,7 +1122,7 @@ static void OnDestroy(HWND hwnd)
     PostQuitMessage(0);
 }
 
-static BOOL FindSubst(HWND hwndDlg, const string_t& str, mapping_t& mapping)
+BOOL Dialog2_FindSubst(HWND hwndDlg, const string_t& str, mapping_t& mapping)
 {
     size_t ich0 = 0;
     for (;;)
@@ -990,20 +1142,20 @@ static BOOL FindSubst(HWND hwndDlg, const string_t& str, mapping_t& mapping)
     return FALSE;
 }
 
-static BOOL InitSubstFile(HWND hwnd, HWND hwndDlg, LPCTSTR pszPath, mapping_t& mapping)
+BOOL Dialog2_InitSubstFile(HWND hwndDlg, LPCTSTR pszPath, mapping_t& mapping)
 {
     TEMPLA_FILE file;
     if (!file.load(pszPath))
         return TRUE;
 
-    return FindSubst(hwndDlg, file.m_string, mapping);
+    return Dialog2_FindSubst(hwndDlg, file.m_string, mapping);
 }
 
-static BOOL InitSubstDir(HWND hwnd, HWND hwndDlg, LPCTSTR pszPath, mapping_t& mapping)
+BOOL Dialog2_InitSubstDir(HWND hwndDlg, LPCTSTR pszPath, mapping_t& mapping)
 {
     string_t str = PathFindFileName(pszPath);
 
-    FindSubst(hwndDlg, str, mapping);
+    Dialog2_FindSubst(hwndDlg, str, mapping);
 
     TCHAR szSpec[MAX_PATH];
     StringCchCopy(szSpec, _countof(szSpec), pszPath);
@@ -1023,133 +1175,21 @@ static BOOL InitSubstDir(HWND hwnd, HWND hwndDlg, LPCTSTR pszPath, mapping_t& ma
                     continue;
             }
 
-            FindSubst(hwndDlg, filename, mapping);
+            Dialog2_FindSubst(hwndDlg, filename, mapping);
 
             string_t path = pszPath;
             path += L'\\';
             path += filename;
 
             if (find.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
-                InitSubstDir(hwnd, hwndDlg, path.c_str(), mapping);
+                Dialog2_InitSubstDir(hwndDlg, path.c_str(), mapping);
             else
-                InitSubstFile(hwnd, hwndDlg, path.c_str(), mapping);
+                Dialog2_InitSubstFile(hwndDlg, path.c_str(), mapping);
         } while (FindNextFile(hFind, &find));
         FindClose(hFind);
     }
 
     return TRUE;
-}
-
-static void ReplacePresetMapping(mapping_t& mapping)
-{
-    for (auto& pair : mapping)
-    {
-        if (pair.first == L"{{TODAY}}")
-        {
-            SYSTEMTIME st;
-            ::GetLocalTime(&st);
-            TCHAR szText[128];
-            StringCchPrintf(szText, _countof(szText), TEXT("%04u-%02u-%02u"),
-                st.wYear,
-                st.wMonth,
-                st.wDay);
-            pair.second += szText;
-            continue;
-        }
-        if (pair.first == L"{{NOW}}")
-        {
-            SYSTEMTIME st;
-            ::GetLocalTime(&st);
-            TCHAR szText[128];
-            StringCchPrintf(szText, _countof(szText), TEXT("%02u:%02u:%02u"),
-                st.wHour,
-                st.wMinute,
-                st.wSecond);
-            pair.second += szText;
-            continue;
-        }
-        if (pair.first == L"{{THISYEAR}}")
-        {
-            SYSTEMTIME st;
-            ::GetLocalTime(&st);
-            pair.second = std::to_wstring(st.wYear);
-            continue;
-        }
-        if (pair.first == L"{{USER}}")
-        {
-            TCHAR szUser[MAX_PATH];
-            DWORD cchUser = _countof(szUser);
-            ::GetUserName(szUser, &cchUser);
-            pair.second = szUser;
-            continue;
-        }
-        if (pair.first == L"{{WEEKDAY}}")
-        {
-            SYSTEMTIME st;
-            ::GetLocalTime(&st);
-            switch (st.wDayOfWeek)
-            {
-            case 0: pair.second = L"Sun"; break;
-            case 1: pair.second = L"Mon"; break;
-            case 2: pair.second = L"Tue"; break;
-            case 3: pair.second = L"Wed"; break;
-            case 4: pair.second = L"Thu"; break;
-            case 5: pair.second = L"Fri"; break;
-            case 6: pair.second = L"Sat"; break;
-            default: pair.second.clear(); break;
-            }
-            continue;
-        }
-        if (pair.first == doLoadStr(IDS_TODAY))
-        {
-            SYSTEMTIME st;
-            ::GetLocalTime(&st);
-            pair.second = std::to_wstring(st.wYear);
-            pair.second += doLoadStr(IDS_YEAR);
-            pair.second += std::to_wstring(st.wMonth);
-            pair.second += doLoadStr(IDS_MONTH);
-            pair.second += std::to_wstring(st.wDay);
-            pair.second += doLoadStr(IDS_DAY);
-            continue;
-        }
-        if (pair.first == doLoadStr(IDS_NOW))
-        {
-            SYSTEMTIME st;
-            ::GetLocalTime(&st);
-            pair.second = std::to_wstring(st.wHour);
-            pair.second += doLoadStr(IDS_HOUR);
-            pair.second += std::to_wstring(st.wMinute);
-            pair.second += doLoadStr(IDS_MINUTE);
-            pair.second += std::to_wstring(st.wSecond);
-            pair.second += doLoadStr(IDS_SECOND);
-            continue;
-        }
-        if (pair.first == doLoadStr(IDS_THISYEAR))
-        {
-            SYSTEMTIME st;
-            ::GetLocalTime(&st);
-            pair.second = std::to_wstring(st.wYear);
-            pair.second += doLoadStr(IDS_YEAR);
-            continue;
-        }
-        if (pair.first == doLoadStr(IDS_USERNAME) || pair.first == doLoadStr(IDS_USERNAME2))
-        {
-            TCHAR szUser[MAX_PATH];
-            DWORD cchUser = _countof(szUser);
-            ::GetUserName(szUser, &cchUser);
-            pair.second = szUser;
-            continue;
-        }
-        if (pair.first == doLoadStr(IDS_WEEKDAY))
-        {
-            SYSTEMTIME st;
-            ::GetLocalTime(&st);
-            assert(st.wDayOfWeek < 7);
-            pair.second.clear();
-            pair.second += doLoadStr(IDS_WEEKDAYS)[st.wDayOfWeek];
-            continue;
-        }
-    }
 }
 
 static bool LoadFdtFile(LPCTSTR pszBasePath, mapping_t& mapping)
@@ -1201,13 +1241,17 @@ static void InitSubstItem(HWND hwnd, INT iItem)
 
     mapping_t mapping;
     if (PathIsDirectory(szPath))
-        InitSubstDir(hwnd, hwndDlg, szPath, mapping);
+        Dialog2_InitSubstDir(hwndDlg, szPath, mapping);
     else
-        InitSubstFile(hwnd, hwndDlg, szPath, mapping);
+        Dialog2_InitSubstFile(hwndDlg, szPath, mapping);
 
-    LoadFdtFile(szPath, mapping);
-
-    ReplacePresetMapping(mapping);
+    if (!LoadFdtFile(szPath, mapping))
+    {
+        for (auto& pair : mapping)
+        {
+            ReplacePair(pair.first, pair.second);
+        }
+    }
 
     UINT i = 0;
     for (auto& pair : mapping)
