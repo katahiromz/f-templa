@@ -321,6 +321,21 @@ static void ReplacePair(const string_t& first, string_t& second)
     }
 }
 
+static void Dialog2_RefreshSubst(HWND hwnd, mapping_t& mapping)
+{
+    ::SendMessage(hwnd, WM_COMMAND, ID_REFRESH_SUBST, 0);
+
+    UINT i = 0;
+    for (auto& pair : mapping)
+    {
+        ::SetDlgItemText(hwnd, IDC_FROM_00 + i, pair.first.c_str());
+        ::SetDlgItemText(hwnd, IDC_TO_00 + i, pair.second.c_str());
+        ++i;
+        if (i >= MAX_REPLACEITEMS)
+            break;
+    }
+}
+
 static void Dialog2_OnPreset(HWND hwnd)
 {
     HWND hwndButton = GetDlgItem(hwnd, IDC_DARROW_PRESET);
@@ -470,17 +485,9 @@ static void Dialog2_OnPreset(HWND hwnd)
             ReplacePair(pair.first, pair.second);
         }
 
-        ::SendMessage(g_hwndDialogs[1], WM_COMMAND, ID_REFRESH_SUBST, 0);
+        Dialog2_RefreshSubst(hwnd, mapping);
 
-        UINT i = 0;
-        for (auto& pair : mapping)
-        {
-            ::SetDlgItemText(hwnd, IDC_FROM_00 + i, pair.first.c_str());
-            ::SetDlgItemText(hwnd, IDC_TO_00 + i, pair.second.c_str());
-            ++i;
-            if (i >= MAX_REPLACEITEMS)
-                break;
-        }
+        g_history.clear();
     }
 }
 
@@ -1229,11 +1236,8 @@ static bool LoadFdtFile(LPCTSTR pszBasePath, mapping_t& mapping)
     return true;
 }
 
-static void InitSubstItem(HWND hwnd, INT iItem)
+static void Dialog2_InitSubst(HWND hwndDlg, INT iItem)
 {
-    HWND hwndDlg = g_hwndDialogs[g_iDialog];
-    ::SendMessage(hwndDlg, WM_COMMAND, ID_REFRESH_SUBST, 0);
-
     TCHAR szItem[MAX_PATH], szPath[MAX_PATH];
     ListView_GetItemText(g_hListView, iItem, 0, szItem, _countof(szItem));
     StringCchCopy(szPath, _countof(szPath), g_root_dir);
@@ -1253,15 +1257,7 @@ static void InitSubstItem(HWND hwnd, INT iItem)
         }
     }
 
-    UINT i = 0;
-    for (auto& pair : mapping)
-    {
-        ::SetDlgItemText(hwndDlg, IDC_FROM_00 + i, pair.first.c_str());
-        ::SetDlgItemText(hwndDlg, IDC_TO_00 + i, pair.second.c_str());
-        ++i;
-        if (i >= MAX_REPLACEITEMS)
-            break;
-    }
+    Dialog2_RefreshSubst(hwndDlg, mapping);
 
     SaveFdtFile(szPath, mapping);
 }
@@ -1404,7 +1400,7 @@ static LRESULT OnListViewItemChanged(HWND hwnd, NM_LISTVIEW* pListView)
     {
         g_iDialog = 1;
         ::SendMessage(g_hStatusBar, SB_SETTEXT, 0 | 0, (LPARAM)doLoadStr(IDS_TYPESUBST));
-        InitSubstItem(hwnd, iItem);
+        Dialog2_InitSubst(g_hwndDialogs[1], iItem);
         s_iItemOld = iItem;
     }
     else
