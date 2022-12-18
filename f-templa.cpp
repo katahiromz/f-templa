@@ -357,6 +357,7 @@ static void Dialog2_OnPreset(HWND hwnd)
     ::GetWindowRect(hwndButton, &rc);
 
     HMENU hMenu = ::CreatePopupMenu();
+    ::AppendMenu(hMenu, MF_STRING, ID_UPDATEVALUE, doLoadStr(IDS_UPDATEVALUE));
     ::AppendMenu(hMenu, MF_STRING, ID_SAVEPRESET, doLoadStr(IDS_SAVEPRESET));
 
     FDT_FILE fdt_file;
@@ -488,6 +489,18 @@ static void Dialog2_OnPreset(HWND hwnd)
         Dialog2_RefreshSubst(hwnd, mapping);
 
         g_history.clear();
+    }
+
+    if (iChoice == ID_UPDATEVALUE)
+    {
+        mapping_t mapping = DoGetMapping();
+
+        for (auto& pair : mapping)
+        {
+            ReplacePair(pair.first, pair.second);
+        }
+
+        Dialog2_RefreshSubst(hwnd, mapping);
     }
 }
 

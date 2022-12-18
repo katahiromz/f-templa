@@ -171,6 +171,7 @@ STRINGTABLE
     IDS_EDITPRESET, "編集(&E)..."
     IDS_DELETEKEYVALUE, "キーと値を削除"
     IDS_RESET, "リセット(&R)"
+    IDS_UPDATEVALUE, "値を更新(&U)"
 }
 
 //////////////////////////////////////////////////////////////////////////////

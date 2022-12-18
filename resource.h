@@ -103,6 +103,7 @@
 #define IDS_EDITPRESET                      124
 #define IDS_DELETEKEYVALUE                  125
 #define IDS_RESET                           126
+#define IDS_UPDATEVALUE                     127
 
 #define ID_REFRESH_SUBST                    100
 #define ID_EDITPRESET                       101
@@ -110,6 +111,7 @@
 #define ID_ADDITEM                          103
 #define ID_DELETEKEYANDVALUE                104
 #define ID_RESET                            105
+#define ID_UPDATEVALUE                      106
 
 #ifdef APSTUDIO_INVOKED
     #ifndef APSTUDIO_READONLY_SYMBOLS
