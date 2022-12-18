@@ -228,6 +228,7 @@ static BOOL Preset_OnInitDialog(HWND hwnd, HWND hwndFocus, LPARAM lParam)
     {
         ListBox_AddString(hLst1, name.c_str());
     }
+    ListBox_SetCurSel(hLst1, 0);
 
     g_deleted_sections.clear();
 
@@ -245,6 +246,10 @@ static void Preset_OnDelete(HWND hwnd)
         ListBox_GetText(hLst1, iItem, szText);
         ListBox_DeleteString(hLst1, iItem);
         g_deleted_sections.push_back(szText);
+        if (iItem >= ListBox_GetCount(hLst1))
+            ListBox_SetCurSel(hLst1, iItem - 1);
+        else
+            ListBox_SetCurSel(hLst1, iItem);
     }
 }
 
@@ -410,13 +415,15 @@ static void Dialog2_OnPreset(HWND hwnd)
 
     if (iChoice == ID_EDITPRESET)
     {
-        DialogBoxParam(GetModuleHandle(NULL), MAKEINTRESOURCE(IDD_PRESET),
-                       hwnd, PresetDialogProc, (LPARAM)&section_names);
-        for (auto& name : g_deleted_sections)
+        if (DialogBoxParam(GetModuleHandle(NULL), MAKEINTRESOURCE(IDD_PRESET),
+                           hwnd, PresetDialogProc, (LPARAM)&section_names) == IDOK)
         {
-            fdt_file.name2section.erase(name);
+            for (auto& name : g_deleted_sections)
+            {
+                fdt_file.name2section.erase(name);
+            }
+            fdt_file.save(path.c_str());
         }
-        fdt_file.save(path.c_str());
     }
 }
 
