@@ -34,6 +34,8 @@ INT g_cyDialog2 = 0;
 string_list_t g_ignore = { L"q", L"*.bin", L".git", L".svg", L".vs" };
 std::vector<std::pair<string_t, string_t>> g_history;
 
+static INT s_iItemOld = -1;
+
 LPCTSTR doLoadStr(LPCTSTR text)
 {
     static TCHAR s_szText[1024] = TEXT("");
@@ -131,7 +133,7 @@ static void Dialog2_OnPreset(HWND hwnd)
     string_list_t section_names;
     for (auto& pair : fdt_file.name2section)
     {
-        if (pair.first == L"LATEST" || pair.first == L"HISTORY")
+        if (pair.first.size() && pair.first[0] == L':')
             continue;
 
         section_names.push_back(pair.first);
@@ -636,8 +638,67 @@ static void DeleteTempDir(HWND hwnd)
     }
 }
 
+mapping_t GetMapping(void)
+{
+    HWND hwndDlg = g_hwndDialogs[1];
+
+    mapping_t mapping;
+    for (UINT i = 0; i < MAX_REPLACEITEMS; ++i)
+    {
+        TCHAR szKey[128];
+        TCHAR szValue[1024];
+        ::GetDlgItemText(hwndDlg, IDC_FROM_00 + i, szKey, _countof(szKey));
+        ::GetDlgItemText(hwndDlg, IDC_TO_00 + i, szValue, _countof(szValue));
+        StrTrim(szKey, TEXT(" \t\r\n\x3000"));
+        if (szKey[0] == 0)
+            continue;
+
+        StrTrim(szValue, TEXT(" \t\r\n\x3000"));
+        mapping[szKey] = szValue;
+    }
+
+    return mapping;
+}
+
+static bool SaveFdtFile(LPCTSTR pszBasePath, mapping_t& mapping)
+{
+    string_t path = pszBasePath;
+    path += L".fdt";
+
+    FDT_FILE fdt_file;
+    fdt_file.load(path.c_str());
+
+    auto& latest_section = fdt_file.name2section[L":LATEST"];
+    for (auto& pair : mapping)
+    {
+        latest_section.assign(pair.first, pair.second);
+    }
+
+    auto& history_section = fdt_file.name2section[L":HISTORY"];
+    for (auto& pair : mapping)
+    {
+        history_section.assign(pair);
+    }
+
+    return fdt_file.save(path.c_str());
+}
+
+static void OnDeSelectItem(HWND hwnd, INT iItem)
+{
+    TCHAR szItem[MAX_PATH], szPath[MAX_PATH];
+    ListView_GetItemText(g_hListView, iItem, 0, szItem, _countof(szItem));
+    StringCchCopy(szPath, _countof(szPath), g_root_dir);
+    PathAppend(szPath, szItem);
+
+    mapping_t mapping = GetMapping();
+    SaveFdtFile(szPath, mapping);
+}
+
 static void OnDestroy(HWND hwnd)
 {
+    if (g_iDialog == 1 && s_iItemOld != -1)
+        OnDeSelectItem(hwnd, s_iItemOld);
+
     DeleteTempDir(hwnd);
 
     if (g_nNotifyID)
@@ -871,7 +932,7 @@ static bool LoadFdtFile(LPCTSTR pszBasePath, mapping_t& mapping)
     if (!fdt_file.load(path.c_str()))
         return false;
 
-    auto it = fdt_file.name2section.find(L"LATEST");
+    auto it = fdt_file.name2section.find(L":LATEST");
     if (it != fdt_file.name2section.end())
     {
         auto& latest_section = it->second;
@@ -883,7 +944,7 @@ static bool LoadFdtFile(LPCTSTR pszBasePath, mapping_t& mapping)
         }
     }
 
-    it = fdt_file.name2section.find(L"HISTORY");
+    it = fdt_file.name2section.find(L":HISTORY");
     if (it != fdt_file.name2section.end())
     {
         auto& history_section = it->second;
@@ -895,51 +956,6 @@ static bool LoadFdtFile(LPCTSTR pszBasePath, mapping_t& mapping)
     }
 
     return true;
-}
-
-static bool SaveFdtFile(LPCTSTR pszBasePath, mapping_t& mapping)
-{
-    string_t path = pszBasePath;
-    path += L".fdt";
-
-    FDT_FILE fdt_file;
-    fdt_file.load(path.c_str());
-
-    auto& latest_section = fdt_file.name2section[L"LATEST"];
-    for (auto& pair : mapping)
-    {
-        latest_section.assign(pair.first, pair.second);
-    }
-
-    auto& history_section = fdt_file.name2section[L"HISTORY"];
-    for (auto& pair : mapping)
-    {
-        history_section.assign(pair);
-    }
-
-    return fdt_file.save(path.c_str());
-}
-
-mapping_t GetMapping(void)
-{
-    HWND hwndDlg = g_hwndDialogs[1];
-
-    mapping_t mapping;
-    for (UINT i = 0; i < MAX_REPLACEITEMS; ++i)
-    {
-        TCHAR szKey[128];
-        TCHAR szValue[1024];
-        ::GetDlgItemText(hwndDlg, IDC_FROM_00 + i, szKey, _countof(szKey));
-        ::GetDlgItemText(hwndDlg, IDC_TO_00 + i, szValue, _countof(szValue));
-        StrTrim(szKey, TEXT(" \t\r\n\x3000"));
-        if (szKey[0] == 0)
-            continue;
-
-        StrTrim(szValue, TEXT(" \t\r\n\x3000"));
-        mapping[szKey] = szValue;
-    }
-
-    return mapping;
 }
 
 static void InitSubstItem(HWND hwnd, INT iItem)
@@ -1094,9 +1110,7 @@ static LRESULT OnListViewKeyDown(HWND hwnd, LV_KEYDOWN *pKeyDown)
     switch (pKeyDown->wVKey)
     {
     case VK_RETURN:
-        {
-            ShowContextMenu(hwnd, iItem, 0, 0, CMF_DEFAULTONLY);
-        }
+        ShowContextMenu(hwnd, iItem, 0, 0, CMF_DEFAULTONLY);
         break;
 
     case VK_DELETE:
@@ -1110,7 +1124,6 @@ static LRESULT OnListViewKeyDown(HWND hwnd, LV_KEYDOWN *pKeyDown)
 
 static LRESULT OnListViewItemChanged(HWND hwnd, NM_LISTVIEW* pListView)
 {
-    static INT s_iItemOld = -1;
     INT iItem = ListView_GetNextItem(g_hListView, -1, LVNI_SELECTED);
     if (iItem != -1)
     {
@@ -1122,15 +1135,8 @@ static LRESULT OnListViewItemChanged(HWND hwnd, NM_LISTVIEW* pListView)
     else
     {
         if (g_iDialog == 1 && s_iItemOld != -1)
-        {
-            TCHAR szItem[MAX_PATH], szPath[MAX_PATH];
-            ListView_GetItemText(g_hListView, s_iItemOld, 0, szItem, _countof(szItem));
-            StringCchCopy(szPath, _countof(szPath), g_root_dir);
-            PathAppend(szPath, szItem);
+            OnDeSelectItem(hwnd, s_iItemOld);
 
-            mapping_t mapping = GetMapping();
-            SaveFdtFile(szPath, mapping);
-        }
         g_iDialog = 0;
         ::SendMessage(g_hStatusBar, SB_SETTEXT, 0 | 0, (LPARAM)doLoadStr(IDS_SELECTITEM));
         s_iItemOld = iItem;
