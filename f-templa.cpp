@@ -270,9 +270,10 @@ static void Dialog2_OnDownArrow(HWND hwnd, INT id)
 
     HMENU hMenu = CreatePopupMenu();
 
+    const INT c_history_first = 1000;
     if (strs.size() || szValue[0])
     {
-        INT i = 1000;
+        INT i = c_history_first;
         for (auto& str : strs)
         {
             ::AppendMenu(hMenu, MF_STRING, i++, str.c_str());
@@ -294,17 +295,17 @@ static void Dialog2_OnDownArrow(HWND hwnd, INT id)
     ::DestroyMenu(hMenu);
     if (iChoice != 0)
     {
-        if (iChoice == 999)
-        {
-            g_history.push_back(std::make_pair(szKey, szValue));
-        }
-        else
+        if (iChoice >= c_history_first)
         {
             HWND hwndEdit = GetDlgItem(hwnd, nEditToID);
             assert(hwndEdit);
-            SetWindowText(hwndEdit, strs[iChoice - 1000].c_str());
+            SetWindowText(hwndEdit, strs[iChoice - c_history_first].c_str());
             Edit_SetSel(hwndEdit, 0, -1);
             SetFocus(hwndEdit);
+        }
+        else if (iChoice == 999)
+        {
+            g_history.push_back(std::make_pair(szKey, szValue));
         }
     }
 }
