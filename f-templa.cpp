@@ -1117,7 +1117,7 @@ static void OnListViewDeleteKey(HWND hwnd, INT iItem)
     {
         if (!::DeleteFile(szPath))
         {
-            // TODO: error message
+            MessageBox(hwnd, doLoadStr(IDS_CANTDELETEFILE), NULL, MB_ICONERROR);
         }
     }
     else

@@ -95,6 +95,7 @@
 #define IDS_SAVEPRESET                      117
 #define IDS_ADDITEM                         118
 #define IDS_NONE                            119
+#define IDS_CANTDELETEFILE                  120
 
 #define ID_REFRESH_SUBST                    100
 
