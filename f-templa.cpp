@@ -377,16 +377,24 @@ static void Dialog2_OnDownArrow(HWND hwnd, INT id)
     if (strs.size() || szValue[0])
     {
         INT i = c_history_first;
+        BOOL bFound = FALSE;
         for (auto& str : strs)
         {
             ::AppendMenu(hMenu, MF_STRING, i++, str.c_str());
+            if (str == szValue)
+                bFound = TRUE;
         }
 
         ::AppendMenu(hMenu, MF_SEPARATOR, 0, L"");
 
-        TCHAR szItem[1024];
-        StringCchPrintf(szItem, _countof(szItem), doLoadStr(IDS_ADDITEM), szValue);
-        ::AppendMenu(hMenu, MF_STRING, 999, szItem);
+        if (!bFound && szValue[0])
+        {
+            TCHAR szItem[1024];
+            StringCchPrintf(szItem, _countof(szItem), doLoadStr(IDS_ADDITEM), szValue);
+            ::AppendMenu(hMenu, MF_STRING, ID_ADDITEM, szItem);
+        }
+
+        ::AppendMenu(hMenu, MF_STRING, ID_DELETEKEYANDVALUE, doLoadStr(IDS_DELETEKEYVALUE));
     }
     else
     {
@@ -400,15 +408,51 @@ static void Dialog2_OnDownArrow(HWND hwnd, INT id)
     {
         if (iChoice >= c_history_first)
         {
-            HWND hwndEdit = GetDlgItem(hwnd, nEditToID);
+            HWND hwndEdit = ::GetDlgItem(hwnd, nEditToID);
             assert(hwndEdit);
-            SetWindowText(hwndEdit, strs[iChoice - c_history_first].c_str());
+            ::SetWindowText(hwndEdit, strs[iChoice - c_history_first].c_str());
             Edit_SetSel(hwndEdit, 0, -1);
             SetFocus(hwndEdit);
         }
-        else if (iChoice == 999)
+        else if (iChoice == ID_ADDITEM)
         {
             g_history.push_back(std::make_pair(szKey, szValue));
+        }
+        else if (iChoice == ID_DELETEKEYANDVALUE)
+        {
+            ::SetDlgItemText(hwnd, nEditFromID, NULL);
+            ::SetDlgItemText(hwnd, nEditToID, NULL);
+
+            INT iItem = ListView_GetNextItem(g_hListView, -1, LVNI_SELECTED);
+            if (iItem == -1)
+                return;
+
+            TCHAR szItem[MAX_PATH], szPath[MAX_PATH];
+            ListView_GetItemText(g_hListView, iItem, 0, szItem, _countof(szItem));
+            StringCchCopy(szPath, _countof(szPath), g_root_dir);
+            PathAppend(szPath, szItem);
+
+            string_t path = szPath;
+            path += L".fdt";
+
+            FDT_FILE fdt_file;
+            if (fdt_file.load(path.c_str()))
+            {
+                for (auto& pair : fdt_file.name2section)
+                {
+                    auto& section = pair.second;
+                    section.erase(szKey);
+                }
+                fdt_file.save(path.c_str());
+            }
+
+            for (size_t i = g_history.size() - 1; i < g_history.size(); --i)
+            {
+                if (g_history[i].first == szKey)
+                {
+                    g_history.erase(g_history.begin() + i);
+                }
+            }
         }
     }
 }

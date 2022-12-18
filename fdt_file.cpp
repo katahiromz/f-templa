@@ -19,7 +19,7 @@ retry:
     items.push_back(item);
 }
 
-void FDT_FILE::SECTION::assign(const string_t& key, const string_t& value)
+void FDT_FILE::SECTION::erase(const string_t& key)
 {
 retry:
     for (size_t i = 0; i < items.size(); ++i)
@@ -30,6 +30,11 @@ retry:
             goto retry;
         }
     }
+}
+
+void FDT_FILE::SECTION::assign(const string_t& key, const string_t& value)
+{
+    erase(key);
     items.push_back(std::make_pair(key, value));
 }
 

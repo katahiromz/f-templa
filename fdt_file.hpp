@@ -8,6 +8,7 @@ struct FDT_FILE
         std::vector<ITEM> items;
         void assign(const ITEM& item);
         void assign(const string_t& key, const string_t& value);
+        void erase(const string_t& key);
     };
     std::unordered_map<string_t, SECTION> name2section;
 

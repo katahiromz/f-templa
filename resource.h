@@ -101,10 +101,13 @@
 #define IDS_INVALIDSTRING                   122
 #define IDS_DONAME                          123
 #define IDS_EDITPRESET                      124
+#define IDS_DELETEKEYVALUE                  125
 
 #define ID_REFRESH_SUBST                    100
 #define ID_EDITPRESET                       101
 #define ID_SAVEPRESET                       102
+#define ID_ADDITEM                          103
+#define ID_DELETEKEYANDVALUE                104
 
 #ifdef APSTUDIO_INVOKED
     #ifndef APSTUDIO_READONLY_SYMBOLS

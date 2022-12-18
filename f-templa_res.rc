@@ -169,6 +169,7 @@ STRINGTABLE
     IDS_INVALIDSTRING, "不正な文字列です。"
     IDS_DONAME, "名前を付けて下さい"
     IDS_EDITPRESET, "編集(&E)..."
+    IDS_DELETEKEYVALUE, "キーと値を削除"
 }
 
 //////////////////////////////////////////////////////////////////////////////
