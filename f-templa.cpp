@@ -107,6 +107,28 @@ static BOOL Dialog2_OnInitDialog(HWND hwnd, HWND hwndFocus, LPARAM lParam)
     return TRUE;
 }
 
+mapping_t DoGetMapping(void)
+{
+    HWND hwndDlg = g_hwndDialogs[1];
+
+    mapping_t mapping;
+    for (UINT i = 0; i < MAX_REPLACEITEMS; ++i)
+    {
+        TCHAR szKey[128];
+        TCHAR szValue[1024];
+        ::GetDlgItemText(hwndDlg, IDC_FROM_00 + i, szKey, _countof(szKey));
+        ::GetDlgItemText(hwndDlg, IDC_TO_00 + i, szValue, _countof(szValue));
+        StrTrim(szKey, TEXT(" \t\r\n\x3000"));
+        if (szKey[0] == 0)
+            continue;
+
+        StrTrim(szValue, TEXT(" \t\r\n\x3000"));
+        mapping[szKey] = szValue;
+    }
+
+    return mapping;
+}
+
 static void Dialog2_OnPreset(HWND hwnd)
 {
     HWND hwndButton = GetDlgItem(hwnd, IDC_DARROW_PRESET);
@@ -121,14 +143,17 @@ static void Dialog2_OnPreset(HWND hwnd)
     StringCchCopy(szPath, _countof(szPath), g_root_dir);
     PathAppend(szPath, szItem);
 
+    string_t path = szPath;
+    path += L".fdt";
+
     RECT rc;
     ::GetWindowRect(hwndButton, &rc);
 
-    HMENU hPopup = CreatePopupMenu();
-    ::AppendMenu(hPopup, MF_STRING, 2, doLoadStr(IDS_SAVEPRESET));
+    HMENU hMenu = ::CreatePopupMenu();
+    ::AppendMenu(hMenu, MF_STRING, 999, doLoadStr(IDS_SAVEPRESET));
 
     FDT_FILE fdt_file;
-    fdt_file.load(szPath);
+    fdt_file.load(path.c_str());
 
     string_list_t section_names;
     for (auto& pair : fdt_file.name2section)
@@ -139,26 +164,80 @@ static void Dialog2_OnPreset(HWND hwnd)
         section_names.push_back(pair.first);
     }
 
+    const INT c_section_first = 1000;
     if (section_names.size())
     {
-        ::AppendMenu(hPopup, MF_SEPARATOR, 0, NULL);
+        ::AppendMenu(hMenu, MF_SEPARATOR, 0, NULL);
 
-        INT i = 1000;
+        std::sort(section_names.begin(), section_names.end());
+
+        INT i = c_section_first;
         for (auto& name : section_names)
         {
-            ::AppendMenu(hPopup, MF_STRING, i++, name.c_str());
+            ::AppendMenu(hMenu, MF_STRING, i++, name.c_str());
         }
     }
 
-    INT iChoice = ::TrackPopupMenu(hPopup, TPM_RETURNCMD | TPM_LEFTALIGN | TPM_LEFTBUTTON,
-        rc.right, rc.top, 0, hwnd, &rc);
-    if (iChoice != 0)
+    INT iChoice = ::TrackPopupMenu(hMenu, TPM_RETURNCMD | TPM_LEFTALIGN | TPM_LEFTBUTTON,
+                                   rc.right, rc.top, 0, hwnd, &rc);
+    ::DestroyMenu(hMenu);
+    if (iChoice == 0)
+        return;
+
+    if (iChoice >= c_section_first)
     {
-        if (iChoice < 1000)
+        auto& name = section_names[iChoice - c_section_first];
+        auto& section = fdt_file.name2section[name];
+        for (auto& item : section.items)
         {
+            for (INT id = IDC_FROM_00; id < IDC_FROM_00 + MAX_REPLACEITEMS; ++id)
+            {
+                TCHAR szFrom[128];
+                GetDlgItemText(hwnd, id, szFrom, _countof(szFrom));
+                StrTrim(szFrom, TEXT(" \t\r\n\x3000"));
+
+                if (item.first == szFrom)
+                {
+                    SetDlgItemText(hwnd, IDC_TO_00 + (id - IDC_FROM_00), item.second.c_str());
+                    break;
+                }
+            }
         }
-        else
+        return;
+    }
+
+    if (iChoice == 999)
+    {
+        TCHAR name[128];
+        const INT c_max = 100;
+        INT iSection = 0;
+        for (; iSection < c_max; ++iSection)
         {
+            bool found = false;
+            StringCchPrintf(name, _countof(name), doLoadStr(IDS_SECTIONAME), iSection + 1);
+            for (auto& pair : fdt_file.name2section)
+            {
+                if (pair.first != name)
+                    continue;
+
+                found = true;
+                break;
+            }
+
+            if (!found)
+                break;
+        }
+
+        if (iSection != c_max)
+        {
+            auto& section = fdt_file.name2section[name];
+            mapping_t mapping = DoGetMapping();
+            for (auto& pair : mapping)
+            {
+                section.assign(pair.first, pair.second);
+            }
+
+            fdt_file.save(path.c_str());
         }
     }
 }
@@ -189,29 +268,30 @@ static void Dialog2_OnDownArrow(HWND hwnd, INT id)
         }
     }
 
-    HMENU hPopup = CreatePopupMenu();
+    HMENU hMenu = CreatePopupMenu();
 
     if (strs.size() || szValue[0])
     {
         INT i = 1000;
         for (auto& str : strs)
         {
-            ::AppendMenu(hPopup, MF_STRING, i++, str.c_str());
+            ::AppendMenu(hMenu, MF_STRING, i++, str.c_str());
         }
 
-        ::AppendMenu(hPopup, MF_SEPARATOR, 0, L"");
+        ::AppendMenu(hMenu, MF_SEPARATOR, 0, L"");
 
         TCHAR szItem[1024];
         StringCchPrintf(szItem, _countof(szItem), doLoadStr(IDS_ADDITEM), szValue);
-        ::AppendMenu(hPopup, MF_STRING, 999, szItem);
+        ::AppendMenu(hMenu, MF_STRING, 999, szItem);
     }
     else
     {
-        ::AppendMenu(hPopup, MF_STRING | MF_GRAYED, 0, doLoadStr(IDS_NONE));
+        ::AppendMenu(hMenu, MF_STRING | MF_GRAYED, 0, doLoadStr(IDS_NONE));
     }
 
-    INT iChoice = ::TrackPopupMenu(hPopup, TPM_RETURNCMD | TPM_LEFTALIGN | TPM_LEFTBUTTON,
-        rc.right, rc.top, 0, hwnd, &rc);
+    INT iChoice = ::TrackPopupMenu(hMenu, TPM_RETURNCMD | TPM_LEFTALIGN | TPM_LEFTBUTTON,
+                                   rc.right, rc.top, 0, hwnd, &rc);
+    ::DestroyMenu(hMenu);
     if (iChoice != 0)
     {
         if (iChoice == 999)
@@ -657,28 +737,6 @@ static void DeleteTempDir(HWND hwnd)
         ::SHFileOperation(&op);
         ZeroMemory(g_temp_dir, sizeof(g_temp_dir));
     }
-}
-
-mapping_t DoGetMapping(void)
-{
-    HWND hwndDlg = g_hwndDialogs[1];
-
-    mapping_t mapping;
-    for (UINT i = 0; i < MAX_REPLACEITEMS; ++i)
-    {
-        TCHAR szKey[128];
-        TCHAR szValue[1024];
-        ::GetDlgItemText(hwndDlg, IDC_FROM_00 + i, szKey, _countof(szKey));
-        ::GetDlgItemText(hwndDlg, IDC_TO_00 + i, szValue, _countof(szValue));
-        StrTrim(szKey, TEXT(" \t\r\n\x3000"));
-        if (szKey[0] == 0)
-            continue;
-
-        StrTrim(szValue, TEXT(" \t\r\n\x3000"));
-        mapping[szKey] = szValue;
-    }
-
-    return mapping;
 }
 
 static bool SaveFdtFile(LPCTSTR pszBasePath, mapping_t& mapping)
