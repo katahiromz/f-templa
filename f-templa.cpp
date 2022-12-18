@@ -175,6 +175,10 @@ static void Dialog2_OnDownArrow(HWND hwnd, INT id)
     ::GetDlgItemText(hwnd, nEditFromID, szKey, _countof(szKey));
     StrTrim(szKey, TEXT(" \t\r\n\x3000"));
 
+    TCHAR szValue[1024];
+    ::GetDlgItemText(hwnd, nEditToID, szValue, _countof(szValue));
+    StrTrim(szValue, TEXT(" \t\r\n\x3000"));
+
     string_list_t strs;
     for (auto& pair : g_history)
     {
@@ -185,23 +189,40 @@ static void Dialog2_OnDownArrow(HWND hwnd, INT id)
         }
     }
 
-    if (strs.size())
-    {
-        HMENU hPopup = CreatePopupMenu();
+    HMENU hPopup = CreatePopupMenu();
 
-        INT i = 1;
+    if (strs.size() || szValue[0])
+    {
+        INT i = 1000;
         for (auto& str : strs)
         {
             ::AppendMenu(hPopup, MF_STRING, i++, str.c_str());
         }
 
-        INT iChoice = ::TrackPopupMenu(hPopup, TPM_RETURNCMD | TPM_LEFTALIGN | TPM_LEFTBUTTON,
-            rc.right, rc.top, 0, hwnd, &rc);
-        if (iChoice != 0)
+        ::AppendMenu(hPopup, MF_SEPARATOR, 0, L"");
+
+        TCHAR szItem[1024];
+        StringCchPrintf(szItem, _countof(szItem), doLoadStr(IDS_ADDITEM), szValue);
+        ::AppendMenu(hPopup, MF_STRING, 999, szItem);
+    }
+    else
+    {
+        ::AppendMenu(hPopup, MF_STRING | MF_GRAYED, 0, doLoadStr(IDS_NONE));
+    }
+
+    INT iChoice = ::TrackPopupMenu(hPopup, TPM_RETURNCMD | TPM_LEFTALIGN | TPM_LEFTBUTTON,
+        rc.right, rc.top, 0, hwnd, &rc);
+    if (iChoice != 0)
+    {
+        if (iChoice == 999)
+        {
+            g_history.push_back(std::make_pair(szKey, szValue));
+        }
+        else
         {
             HWND hwndEdit = GetDlgItem(hwnd, nEditToID);
             assert(hwndEdit);
-            SetWindowText(hwndEdit, strs[iChoice - 1].c_str());
+            SetWindowText(hwndEdit, strs[iChoice - 1000].c_str());
             Edit_SetSel(hwndEdit, 0, -1);
             SetFocus(hwndEdit);
         }
@@ -676,6 +697,10 @@ static bool SaveFdtFile(LPCTSTR pszBasePath, mapping_t& mapping)
 
     auto& history_section = fdt_file.name2section[L":HISTORY"];
     for (auto& pair : mapping)
+    {
+        history_section.assign(pair);
+    }
+    for (auto& pair : g_history)
     {
         history_section.assign(pair);
     }

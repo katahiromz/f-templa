@@ -93,6 +93,8 @@
 #define IDS_WEEKDAY                         115
 #define IDS_WEEKDAYS                        116
 #define IDS_SAVEPRESET                      117
+#define IDS_ADDITEM                         118
+#define IDS_NONE                            119
 
 #define ID_REFRESH_SUBST                    100
 
