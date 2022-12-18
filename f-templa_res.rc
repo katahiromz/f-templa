@@ -126,6 +126,18 @@ FONT 9, "MS UI Gothic"
     PUSHBUTTON "キャンセル", IDCANCEL, 105, 60, 60, 15
 }
 
+IDD_PRESET DIALOG 0, 0, 184, 145
+CAPTION "サンプル ダイアログ"
+STYLE DS_CENTER | DS_MODALFRAME | WS_POPUPWINDOW | WS_CAPTION
+FONT 9, "MS UI Gothic"
+{
+    LTEXT "プリセット(&P):", -1, 5, 5, 98, 10
+    LISTBOX lst1, 6, 18, 111, 104, LBS_NOINTEGRALHEIGHT | LBS_HASSTRINGS | WS_VSCROLL | WS_TABSTOP
+    PUSHBUTTON "削除(&D)", psh1, 121, 19, 60, 14
+    DEFPUSHBUTTON "OK", IDOK, 56, 127, 60, 14
+    PUSHBUTTON "キャンセル", IDCANCEL, 118, 127, 60, 14
+}
+
 //////////////////////////////////////////////////////////////////////////////
 // RT_STRING
 
@@ -152,7 +164,10 @@ STRINGTABLE
     IDS_ADDITEM, "「%s」を追加"
     IDS_NONE, "(なし)"
     IDS_CANTDELETEFILE, "削除できませんでした。"
-    IDS_SECTIONAME, "プリセット #%u"
+    IDS_SECTIONAME, "プリセット #%02u"
+    IDS_INVALIDSTRING, "不正な文字列です。"
+    IDS_DONAME, "名前を付けて下さい"
+    IDS_EDITPRESET, "編集(&E)..."
 }
 
 //////////////////////////////////////////////////////////////////////////////

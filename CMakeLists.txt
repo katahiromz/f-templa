@@ -27,6 +27,7 @@ add_executable(f-templa WIN32
     fdt_file.cpp
     CDropTarget.cpp
     CDropSource.cpp
+    InputBox.cpp
     f-templa.cpp
     f-templa_res.rc)
 target_link_libraries(f-templa comctl32 shlwapi libtempla)

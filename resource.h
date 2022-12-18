@@ -72,6 +72,7 @@
 #define IDD_TOP                             100
 #define IDD_SUBST                           101
 #define IDD_INPUTBOX                        102
+#define IDD_PRESET                          103
 
 #define IDI_MAINICON                        100
 
@@ -97,14 +98,19 @@
 #define IDS_NONE                            119
 #define IDS_CANTDELETEFILE                  120
 #define IDS_SECTIONAME                      121
+#define IDS_INVALIDSTRING                   122
+#define IDS_DONAME                          123
+#define IDS_EDITPRESET                      124
 
 #define ID_REFRESH_SUBST                    100
+#define ID_EDITPRESET                       101
+#define ID_SAVEPRESET                       102
 
 #ifdef APSTUDIO_INVOKED
     #ifndef APSTUDIO_READONLY_SYMBOLS
         #define _APS_NO_MFC                 1
         #define _APS_NEXT_RESOURCE_VALUE    100
-        #define _APS_NEXT_COMMAND_VALUE     101
+        #define _APS_NEXT_COMMAND_VALUE     103
         #define _APS_NEXT_CONTROL_VALUE     2401
         #define _APS_NEXT_SYMED_VALUE       300
     #endif

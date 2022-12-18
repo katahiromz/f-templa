@@ -11,6 +11,7 @@
 #include "CDropSource.hpp"
 #include "f-templa.hpp"
 #include "fdt_file.hpp"
+#include "InputBox.hpp"
 #include "resource.h"
 
 #define CLASSNAME TEXT("FolderDeTemple")
@@ -129,6 +130,65 @@ mapping_t DoGetMapping(void)
     return mapping;
 }
 
+static BOOL CALLBACK InputBoxCallback(LPTSTR text)
+{
+    StrTrim(text, TEXT(" \t\r\n\x3000"));
+    return text[0] != 0 && text[0] != L':';
+}
+
+static string_list_t g_deleted_sections;
+
+static BOOL Preset_OnInitDialog(HWND hwnd, HWND hwndFocus, LPARAM lParam)
+{
+    HWND hLst1 = GetDlgItem(hwnd, lst1);
+    for (auto& name : *(string_list_t*)lParam)
+    {
+        ListBox_AddString(hLst1, name.c_str());
+    }
+
+    g_deleted_sections.clear();
+
+    return TRUE;
+}
+
+static void Preset_OnPsh1(HWND hwnd)
+{
+    HWND hLst1 = GetDlgItem(hwnd, lst1);
+    INT iItem = ListBox_GetCurSel(hLst1);
+    if (iItem != LB_ERR)
+    {
+        TCHAR szText[1024];
+        ListBox_GetText(hLst1, iItem, szText);
+        ListBox_DeleteString(hLst1, iItem);
+        g_deleted_sections.push_back(szText);
+    }
+}
+
+static void Preset_OnCommand(HWND hwnd, int id, HWND hwndCtl, UINT codeNotify)
+{
+    switch (id)
+    {
+    case psh1:
+        Preset_OnPsh1(hwnd);
+        break;
+    case IDOK:
+    case IDCANCEL:
+        EndDialog(hwnd, id);
+        break;
+    }
+}
+
+static INT_PTR CALLBACK
+PresetDialogProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
+{
+    switch (uMsg)
+    {
+        HANDLE_MSG(hwnd, WM_INITDIALOG, Preset_OnInitDialog);
+        HANDLE_MSG(hwnd, WM_COMMAND, Preset_OnCommand);
+    }
+    return 0;
+}
+
 static void Dialog2_OnPreset(HWND hwnd)
 {
     HWND hwndButton = GetDlgItem(hwnd, IDC_DARROW_PRESET);
@@ -150,7 +210,7 @@ static void Dialog2_OnPreset(HWND hwnd)
     ::GetWindowRect(hwndButton, &rc);
 
     HMENU hMenu = ::CreatePopupMenu();
-    ::AppendMenu(hMenu, MF_STRING, 999, doLoadStr(IDS_SAVEPRESET));
+    ::AppendMenu(hMenu, MF_STRING, ID_SAVEPRESET, doLoadStr(IDS_SAVEPRESET));
 
     FDT_FILE fdt_file;
     fdt_file.load(path.c_str());
@@ -176,6 +236,9 @@ static void Dialog2_OnPreset(HWND hwnd)
         {
             ::AppendMenu(hMenu, MF_STRING, i++, name.c_str());
         }
+
+        ::AppendMenu(hMenu, MF_SEPARATOR, 0, NULL);
+        ::AppendMenu(hMenu, MF_STRING, ID_EDITPRESET, doLoadStr(IDS_EDITPRESET));
     }
 
     INT iChoice = ::TrackPopupMenu(hMenu, TPM_RETURNCMD | TPM_LEFTALIGN | TPM_LEFTBUTTON,
@@ -206,7 +269,7 @@ static void Dialog2_OnPreset(HWND hwnd)
         return;
     }
 
-    if (iChoice == 999)
+    if (iChoice == ID_SAVEPRESET)
     {
         TCHAR name[128];
         const INT c_max = 100;
@@ -230,15 +293,30 @@ static void Dialog2_OnPreset(HWND hwnd)
 
         if (iSection != c_max)
         {
-            auto& section = fdt_file.name2section[name];
-            mapping_t mapping = DoGetMapping();
-            for (auto& pair : mapping)
+            string_t section_name = name;
+            if (InputBox(hwnd, section_name, MAKEINTRESOURCE(IDS_DONAME), NULL, InputBoxCallback))
             {
-                section.assign(pair.first, pair.second);
-            }
+                auto& section = fdt_file.name2section[section_name];
+                mapping_t mapping = DoGetMapping();
+                for (auto& pair : mapping)
+                {
+                    section.assign(pair.first, pair.second);
+                }
 
-            fdt_file.save(path.c_str());
+                fdt_file.save(path.c_str());
+            }
         }
+    }
+
+    if (iChoice == ID_EDITPRESET)
+    {
+        DialogBoxParam(GetModuleHandle(NULL), MAKEINTRESOURCE(IDD_PRESET), hwnd, PresetDialogProc,
+                       (LPARAM)&section_names);
+        for (auto& name : g_deleted_sections)
+        {
+            fdt_file.name2section.erase(name);
+        }
+        fdt_file.save(path.c_str());
     }
 }
 
