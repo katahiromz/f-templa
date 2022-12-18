@@ -35,6 +35,7 @@ static BOOL OnInitDialog(HWND hwnd, HWND hwndFocus, LPARAM lParam)
         SetWindowText(hwnd, doString(pInputBox->title));
     }
 
+    CenterWindowDx(hwnd);
     return TRUE;
 }
 
