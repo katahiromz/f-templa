@@ -10,7 +10,7 @@ struct FDT_FILE
         void assign(const string_t& key, const string_t& value);
         void erase(const string_t& key);
     };
-    std::unordered_map<string_t, SECTION> name2section;
+    std::map<string_t, SECTION> name2section;
 
     bool load(LPCWSTR filename);
     bool save(LPCWSTR filename);
