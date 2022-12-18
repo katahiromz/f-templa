@@ -1267,6 +1267,14 @@ static void Dialog2_InitSubst(HWND hwndDlg, INT iItem)
             ReplacePair(pair.first, pair.second);
         }
     }
+    else
+    {
+        for (auto& pair : mapping)
+        {
+            if (pair.second.empty())
+                ReplacePair(pair.first, pair.second);
+        }
+    }
 
     Dialog2_RefreshSubst(hwndDlg, mapping);
 
