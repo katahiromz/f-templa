@@ -235,11 +235,24 @@ static BOOL Preset_OnInitDialog(HWND hwnd, HWND hwndFocus, LPARAM lParam)
     return TRUE;
 }
 
-static void Preset_OnPsh1(HWND hwnd)
+static void Preset_OnDelete(HWND hwnd)
 {
     HWND hLst1 = GetDlgItem(hwnd, lst1);
     INT iItem = ListBox_GetCurSel(hLst1);
     if (iItem != LB_ERR)
+    {
+        TCHAR szText[1024];
+        ListBox_GetText(hLst1, iItem, szText);
+        ListBox_DeleteString(hLst1, iItem);
+        g_deleted_sections.push_back(szText);
+    }
+}
+
+static void Preset_OnDeleteAll(HWND hwnd)
+{
+    HWND hLst1 = GetDlgItem(hwnd, lst1);
+    INT nCount = ListBox_GetCount(hLst1);
+    for (INT iItem = nCount - 1; iItem >= 0; --iItem)
     {
         TCHAR szText[1024];
         ListBox_GetText(hLst1, iItem, szText);
@@ -253,7 +266,10 @@ static void Preset_OnCommand(HWND hwnd, int id, HWND hwndCtl, UINT codeNotify)
     switch (id)
     {
     case psh1:
-        Preset_OnPsh1(hwnd);
+        Preset_OnDelete(hwnd);
+        break;
+    case psh2:
+        Preset_OnDeleteAll(hwnd);
         break;
     case IDOK:
     case IDCANCEL:
@@ -1549,8 +1565,18 @@ WinMain(HINSTANCE   hInstance,
     MSG msg;
     while (GetMessage(&msg, NULL, 0, 0))
     {
-        if (g_hwndDialogs[g_iDialog] && IsDialogMessage(g_hwndDialogs[g_iDialog], &msg))
+        BOOL bContinue = FALSE;
+        for (INT i = 0; i < _countof(g_hwndDialogs); ++i)
+        {
+            if (IsDialogMessage(g_hwndDialogs[i], &msg))
+            {
+                bContinue = TRUE;
+                break;
+            }
+        }
+        if (bContinue)
             continue;
+
         TranslateMessage(&msg);
         DispatchMessage(&msg);
     }
