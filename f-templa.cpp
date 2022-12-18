@@ -1063,6 +1063,30 @@ static void OnBeginDrag(HWND hwnd, NM_LISTVIEW* pListView)
     CoTaskMemFree(ppidlChild);
 }
 
+static void OnListViewDeleteKey(HWND hwnd, INT iItem)
+{
+    TCHAR szPath[MAX_PATH], szItem[MAX_PATH];
+    ZeroMemory(szPath, sizeof(szPath));
+
+    StringCchCopy(szPath, _countof(szPath), g_root_dir);
+    ListView_GetItemText(g_hListView, iItem, 0, szItem, _countof(szItem));
+    PathAppend(szPath, szItem);
+
+    if (::GetKeyState(VK_SHIFT) < 0)
+    {
+        if (!::DeleteFile(szPath))
+        {
+            // TODO: error message
+        }
+    }
+    else
+    {
+        SHFILEOPSTRUCT op = { hwnd, FO_DELETE, szPath };
+        op.fFlags = FOF_ALLOWUNDO;
+        ::SHFileOperation(&op);
+    }
+}
+
 static LRESULT OnListViewKeyDown(HWND hwnd, LV_KEYDOWN *pKeyDown)
 {
     INT iItem = ListView_GetNextItem(g_hListView, -1, LVNI_SELECTED);
@@ -1077,28 +1101,7 @@ static LRESULT OnListViewKeyDown(HWND hwnd, LV_KEYDOWN *pKeyDown)
 
     case VK_DELETE:
         if (iItem != -1)
-        {
-            TCHAR szPath[MAX_PATH], szItem[MAX_PATH];
-            ZeroMemory(szPath, sizeof(szPath));
-
-            StringCchCopy(szPath, _countof(szPath), g_root_dir);
-            ListView_GetItemText(g_hListView, iItem, 0, szItem, _countof(szItem));
-            PathAppend(szPath, szItem);
-
-            if (::GetKeyState(VK_SHIFT) < 0)
-            {
-                if (!::DeleteFile(szPath))
-                {
-                    // TODO: error message
-                }
-            }
-            else
-            {
-                SHFILEOPSTRUCT op = { hwnd, FO_DELETE, szPath };
-                op.fFlags = FOF_ALLOWUNDO;
-                ::SHFileOperation(&op);
-            }
-        }
+            OnListViewDeleteKey(hwnd, iItem);
         break;
     }
 
