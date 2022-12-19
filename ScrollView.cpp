@@ -143,17 +143,8 @@ void ScrollView_OnSize(PSCROLLVIEW pSV, UINT state, INT cx, INT cy)
 
     for (size_t i = 0; i < ARRAYSIZE(bar); ++i)
     {
-        if (bar[i] == SB_HORZ)
-        {
-            if (pSV->bars != SB_BOTH && pSV->bars != SB_HORZ)
-                continue;
-        }
-
-        if (bar[i] == SB_VERT)
-        {
-            if (pSV->bars != SB_BOTH && pSV->bars != SB_VERT)
-                continue;
-        }
+        if (pSV->bars != SB_BOTH && pSV->bars != bar[i])
+            continue;
 
         si.fMask = SIF_PAGE;
         si.nPage = page[i];
