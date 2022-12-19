@@ -1,5 +1,6 @@
 #include <windows.h>
 #include <algorithm>
+#include <cassert>
 #include "ScrollView.hpp"
 #undef min
 #undef max
@@ -8,6 +9,7 @@ BOOL ScrollView_Init(PSCROLLVIEW pSV, HWND hwnd, INT bars)
 {
     pSV->hwnd = hwnd;
     pSV->bars = bars;
+    assert(bars == SB_BOTH || bars == SB_HORZ || bars == SB_VERT);
 
     RECT rc;
     ::GetClientRect(hwnd, &rc);
