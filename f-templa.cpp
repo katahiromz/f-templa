@@ -30,7 +30,7 @@ TCHAR g_temp_dir[MAX_PATH + 1] = TEXT("");
 CDropTarget* g_pDropTarget = NULL;
 CDropSource* g_pDropSource = NULL;
 UINT g_nNotifyID = 0;
-SCROLLVIEW g_Dialog2ScrollView;
+SCROLLVIEW g_Dialog1ScrollView, g_Dialog2ScrollView;
 string_list_t g_ignore = { L"q", L"*.bin", L".git", L".svg", L".vs" };
 std::vector<std::pair<string_t, string_t>> g_history;
 
@@ -94,9 +94,51 @@ static void InitListView(HWND hListView, HIMAGELIST hImageList, LPCTSTR pszDir)
     }
 }
 
+static BOOL Dialog1_OnInitDialog(HWND hwnd, HWND hwndFocus, LPARAM lParam)
+{
+    ScrollView_Init(&g_Dialog1ScrollView, hwnd, SB_VERT);
+    return TRUE;
+}
+
+static void Dialog1_OnCommand(HWND hwnd, int id, HWND hwndCtl, UINT codeNotify)
+{
+}
+
+static void Dialog1_OnSize(HWND hwnd, UINT state, int cx, int cy)
+{
+    ScrollView_OnSize(&g_Dialog1ScrollView, state, cx, cy);
+}
+
+static void Dialog1_OnVScroll(HWND hwnd, HWND hwndCtl, UINT code, int pos)
+{
+    ScrollView_OnVScroll(&g_Dialog1ScrollView, hwndCtl, code, pos);
+}
+
+static void Dialog1_OnMouseWheel(HWND hwnd, int xPos, int yPos, int zDelta, UINT fwKeys)
+{
+    if (zDelta > 0)
+    {
+        for (INT i = 0; i < 3; ++i)
+            ::PostMessage(hwnd, WM_VSCROLL, MAKEWPARAM(SB_LINEUP, 0), 0);
+    }
+    else if (zDelta < 0)
+    {
+        for (INT i = 0; i < 3; ++i)
+            ::PostMessage(hwnd, WM_VSCROLL, MAKEWPARAM(SB_LINEDOWN, 0), 0);
+    }
+}
+
 static INT_PTR CALLBACK
 Dialog1Proc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
+    switch (uMsg)
+    {
+        HANDLE_MSG(hwnd, WM_INITDIALOG, Dialog1_OnInitDialog);
+        HANDLE_MSG(hwnd, WM_COMMAND, Dialog1_OnCommand);
+        HANDLE_MSG(hwnd, WM_SIZE, Dialog1_OnSize);
+        HANDLE_MSG(hwnd, WM_VSCROLL, Dialog1_OnVScroll);
+        HANDLE_MSG(hwnd, WM_MOUSEWHEEL, Dialog1_OnMouseWheel);
+    }
     return 0;
 }
 
