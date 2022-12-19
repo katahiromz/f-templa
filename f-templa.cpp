@@ -251,7 +251,7 @@ PresetDialogProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
     return 0;
 }
 
-static void ReplacePair(const string_t& first, string_t& second)
+static void UpdateValue(const string_t& first, string_t& second)
 {
     if (first == L"{{TODAY}}")
     {
@@ -516,7 +516,7 @@ static void Dialog2_OnPreset(HWND hwnd)
 
         for (auto& pair : mapping)
         {
-            ReplacePair(pair.first, pair.second);
+            UpdateValue(pair.first, pair.second);
         }
 
         Dialog2_RefreshSubst(hwnd, mapping);
@@ -530,7 +530,7 @@ static void Dialog2_OnPreset(HWND hwnd)
 
         for (auto& pair : mapping)
         {
-            ReplacePair(pair.first, pair.second);
+            UpdateValue(pair.first, pair.second);
         }
 
         Dialog2_RefreshSubst(hwnd, mapping);
@@ -620,7 +620,7 @@ static void Dialog2_OnDownArrow(HWND hwnd, INT id)
         {
             std::pair<string_t, string_t> pair;
             pair.first = szKey;
-            ReplacePair(pair.first, pair.second);
+            UpdateValue(pair.first, pair.second);
 
             HWND hwndEdit = ::GetDlgItem(hwnd, nEditToID);
             assert(hwndEdit);
@@ -643,7 +643,7 @@ static void Dialog2_OnDownArrow(HWND hwnd, INT id)
             {
                 std::pair<string_t, string_t> pair;
                 pair.first = szKey;
-                ReplacePair(pair.first, pair.second);
+                UpdateValue(pair.first, pair.second);
 
                 HWND hwndEdit = ::GetDlgItem(hwnd, nEditToID);
                 assert(hwndEdit);
@@ -1199,7 +1199,7 @@ static void Dialog2_InitSubst(HWND hwndDlg, INT iItem)
     {
         for (auto& pair : mapping)
         {
-            ReplacePair(pair.first, pair.second);
+            UpdateValue(pair.first, pair.second);
         }
     }
     else
@@ -1207,7 +1207,7 @@ static void Dialog2_InitSubst(HWND hwndDlg, INT iItem)
         for (auto& pair : mapping)
         {
             if (pair.second.empty())
-                ReplacePair(pair.first, pair.second);
+                UpdateValue(pair.first, pair.second);
         }
     }
 
