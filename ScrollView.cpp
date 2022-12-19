@@ -158,12 +158,10 @@ void ScrollView_OnSize(PSCROLLVIEW pSV, UINT state, INT cx, INT cy)
         si.fMask = SIF_PAGE;
         si.nPage = page[i];
         ::SetScrollInfo(hwnd, bar[i], &si, TRUE);
-
         ::ShowScrollBar(hwnd, bar[i], page[i] < original[i]);
 
-        si.fMask = SIF_RANGE | SIF_POS;
+        si.fMask = SIF_POS;
         ::GetScrollInfo(hwnd, bar[i], &si);
-
         ScrollView_Scroll(pSV, bar[i], si.nPos);
     }
 }
