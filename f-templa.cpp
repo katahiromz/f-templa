@@ -296,17 +296,11 @@ static void ReplacePair(const string_t& first, string_t& second)
     {
         SYSTEMTIME st;
         ::GetLocalTime(&st);
-        switch (st.wDayOfWeek)
+        static const LPCWSTR days[] =
         {
-        case 0: second = L"Sun"; break;
-        case 1: second = L"Mon"; break;
-        case 2: second = L"Tue"; break;
-        case 3: second = L"Wed"; break;
-        case 4: second = L"Thu"; break;
-        case 5: second = L"Fri"; break;
-        case 6: second = L"Sat"; break;
-        default: second.clear(); break;
-        }
+            L"Sun", L"Mon", L"Tue", L"Wed", L"Thu", L"Fri", L"Sat",
+        };
+        second = days[st.wDayOfWeek];
         return;
     }
     if (first == doLoadStr(IDS_TODAY))
