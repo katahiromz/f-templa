@@ -703,53 +703,27 @@ static void Dialog2_OnCommand(HWND hwnd, int id, HWND hwndCtl, UINT codeNotify)
         for (UINT id = IDC_TO_00; id <= IDC_TO_15; ++id)
             ::SetDlgItemText(hwnd, id, NULL);
         break;
-    case IDC_RARROW_00:
-    case IDC_RARROW_01:
-    case IDC_RARROW_02:
-    case IDC_RARROW_03:
-    case IDC_RARROW_04:
-    case IDC_RARROW_05:
-    case IDC_RARROW_06:
-    case IDC_RARROW_07:
-    case IDC_RARROW_08:
-    case IDC_RARROW_09:
-    case IDC_RARROW_10:
-    case IDC_RARROW_11:
-    case IDC_RARROW_12:
-    case IDC_RARROW_13:
-    case IDC_RARROW_14:
-    case IDC_RARROW_15:
-        if (codeNotify == STN_CLICKED)
-        {
-            UINT nEditID = IDC_TO_00 + (id - IDC_RARROW_00);
-            HWND hwndEdit = ::GetDlgItem(hwnd, nEditID);
-            assert(hwndEdit);
-            Edit_SetSel(hwndEdit, 0, -1);
-            ::SetFocus(hwndEdit);
-        }
-        break;
     case IDC_DARROW_PRESET:
         Dialog2_OnPreset(hwnd);
         break;
-    case IDC_DARROW_00:
-    case IDC_DARROW_01:
-    case IDC_DARROW_02:
-    case IDC_DARROW_03:
-    case IDC_DARROW_04:
-    case IDC_DARROW_05:
-    case IDC_DARROW_06:
-    case IDC_DARROW_07:
-    case IDC_DARROW_08:
-    case IDC_DARROW_09:
-    case IDC_DARROW_10:
-    case IDC_DARROW_11:
-    case IDC_DARROW_12:
-    case IDC_DARROW_13:
-    case IDC_DARROW_14:
-    case IDC_DARROW_15:
-        if (codeNotify == BN_CLICKED)
+    default:
+        if (IDC_RARROW_00 <= id && id < IDC_RARROW_00 + MAX_REPLACEITEMS)
         {
-            Dialog2_OnDownArrow(hwnd, id);
+            if (codeNotify == STN_CLICKED)
+            {
+                UINT nEditID = IDC_TO_00 + (id - IDC_RARROW_00);
+                HWND hwndEdit = ::GetDlgItem(hwnd, nEditID);
+                assert(hwndEdit);
+                Edit_SetSel(hwndEdit, 0, -1);
+                ::SetFocus(hwndEdit);
+            }
+        }
+        else if (IDC_DARROW_00 <= id && id < IDC_DARROW_00 + MAX_REPLACEITEMS)
+        {
+            if (codeNotify == BN_CLICKED)
+            {
+                Dialog2_OnDownArrow(hwnd, id);
+            }
         }
         break;
     }
