@@ -29,6 +29,7 @@ add_executable(f-templa WIN32
     CDropSource.cpp
     CenterWindowDx.cpp
     InputBox.cpp
+    ScrollView.cpp
     f-templa.cpp
     f-templa_res.rc)
 target_link_libraries(f-templa comctl32 shlwapi libtempla)
