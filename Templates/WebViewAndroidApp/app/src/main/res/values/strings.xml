@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">ダ迷路</string>
+    <string name="app_name">{{短いアプリ名}}</string>
     <string name="web_view">ウェブビュー</string>
     <string name="ok">OK</string>
     <string name="cancel">キャンセル</string>
