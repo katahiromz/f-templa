@@ -1101,6 +1101,8 @@ BOOL Dialog2_InitSubstFile(HWND hwndDlg, LPCTSTR pszPath, mapping_t& mapping)
     if (!file.load(pszPath))
         return TRUE;
 
+    if (file.m_encoding == TE_BINARY)
+        return TRUE;
     return Dialog2_FindSubst(hwndDlg, file.m_string, mapping);
 }
 

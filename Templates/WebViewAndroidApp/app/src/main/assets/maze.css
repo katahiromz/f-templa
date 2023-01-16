@@ -1,0 +1,105 @@
+/* version: 0.0.7 */
+* {
+	padding: 0;
+	margin: 0;
+}
+body {
+	/* Disable scrollbars */
+	-ms-overflow-style: none;
+
+	/* Disable text selection */
+	-ms-user-select: none;
+	-webkit-user-select: none;
+	user-select: none;
+
+	position: fixed;
+	width: 100vw;
+	height: 100vh;
+	width: 100svw;
+	height: 100svh;
+}
+#contents {
+	display: flex;
+	width: 100vw;
+	height: 100vh;
+	width: 100svw;
+	height: 100svh;
+}
+#game_screen {
+	border: 1px solid black;
+}
+#controller {
+	/* border: 1px solid black; */
+	background-color: #fcc;
+	text-align: center;
+	display: grid;
+	place-items: center;
+}
+/* 縦長 */
+@media screen and (orientation: portrait) {
+	#contents {
+		flex-flow: column;
+	}
+	#game_screen {
+		width: 100%;
+		height: 70%;
+	}
+	#controller {
+		width: 100%;
+		height: 30%;
+	}
+	button {
+		width: 20vw;
+		height: 7vh;
+		width: 20svw;
+		height: 7svh;
+		margin: 2px;
+	}
+}
+/* 横長 */
+@media screen and (orientation: landscape) {
+	#contents {
+	}
+	#game_screen {
+		width: 70%;
+		height: 100%;
+	}
+	#controller {
+		width: 30%;
+		height: 100%;
+	}
+	button {
+		width: 10vw;
+		height: 12vh;
+		width: 10svw;
+		height: 12svh;
+		margin: 2px;
+	}
+}
+button {
+	border: solid 4px black;
+	border-radius: 10px;
+	background-color: lightcyan;
+	background-size: auto 100%;
+	background-repeat: no-repeat;
+	background-position: center;
+	image-rendering: -webkit-optimize-contrast;
+}
+button:hover {
+	background-color: lightyellow;
+}
+button.active {
+	background-color: yellow;
+}
+#up_button {
+	background-image: url(img/up.png);
+}
+#left_button {
+	background-image: url(img/left.png);
+}
+#right_button {
+	background-image: url(img/right.png);
+}
+#down_button {
+	background-image: url(img/down.png);
+}

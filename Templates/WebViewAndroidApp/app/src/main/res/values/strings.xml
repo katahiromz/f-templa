@@ -1,0 +1,10 @@
+<resources>
+    <string name="app_name">ダ迷路</string>
+    <string name="web_view">ウェブビュー</string>
+    <string name="ok">OK</string>
+    <string name="cancel">キャンセル</string>
+    <string name="prompt_hint">文字列を入力して下さい</string>
+
+    <!-- URLs -->
+    <string name="url">file:///android_asset/index.html</string>
+</resources>
