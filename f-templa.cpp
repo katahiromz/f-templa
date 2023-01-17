@@ -1088,8 +1088,11 @@ BOOL Dialog2_FindSubst(HWND hwndDlg, const string_t& str, mapping_t& mapping)
         if (ich0 == str.npos)
             return TRUE;
         auto tag = str.substr(ich, ich0 - ich);
-        tag = L"{{" + tag + L"}}";
-        mapping[tag] = L"";
+        if (tag.size() < 128)
+        {
+            tag = L"{{" + tag + L"}}";
+            mapping[tag] = L"";
+        }
     }
 
     return FALSE;
