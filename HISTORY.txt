@@ -2,6 +2,7 @@
 
 - 2022-12-18 Ver.0.6
     - 初公開。
-- 20XX-YY-ZZ Ver.0.7
+- 2023-01-17 Ver.0.7
     - バイナリファイルの扱いを修正。
     - WebViewAndroidAppテンプレートを追加。
+    - ConsoleApp、HelloWorldInC、HelloWorldInCppテンプレートを追加。
