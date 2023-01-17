@@ -1,4 +1,4 @@
-package com.{{company_name_in_lower_case}}.{{app_name_in_lower_case}}
+package com.{{company_name}}.{{app_name}}
 
 import android.Manifest
 import android.annotation.SuppressLint
@@ -9,14 +9,14 @@ import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
-import com.{{company_name_in_lower_case}}.{{app_name_in_lower_case}}.BuildConfig
+import com.{{company_name}}.{{app_name}}.BuildConfig
 import com.afollestad.materialdialogs.MaterialDialog
 import com.afollestad.materialdialogs.customview.customView
 import com.afollestad.materialdialogs.customview.getCustomView
 import com.afollestad.materialdialogs.input.input
 import com.afollestad.materialdialogs.lifecycle.lifecycleOwner
 import com.afollestad.materialdialogs.utils.MDUtil.getStringArray
-import com.{{company_name_in_lower_case}}.{{app_name_in_lower_case}}.R
+import com.{{company_name}}.{{app_name}}.R
 
 class MyWebChromeClient(private val activity: AppCompatActivity, private val listener: Listener) :
     WebChromeClient() {

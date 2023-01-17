@@ -1,4 +1,4 @@
-package com.{{company_name_in_lower_case}}.{{app_name_in_lower_case}}
+package com.{{company_name}}.{{app_name}}
 
 import android.annotation.SuppressLint
 import android.content.pm.PackageInfo
@@ -12,8 +12,8 @@ import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import java.util.*
-import com.{{company_name_in_lower_case}}.{{app_name_in_lower_case}}.BuildConfig
-import com.{{company_name_in_lower_case}}.{{app_name_in_lower_case}}.R
+import com.{{company_name}}.{{app_name}}.BuildConfig
+import com.{{company_name}}.{{app_name}}.R
 
 class MainActivity : AppCompatActivity(), ValueCallback<String> {
 

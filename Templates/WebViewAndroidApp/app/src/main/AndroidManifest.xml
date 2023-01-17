@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.{{company_name_in_lower_case}}.{{app_name_in_lower_case}}">
+    package="com.{{company_name}}.{{app_name}}">
 
     <application
         android:allowBackup="true"
@@ -8,8 +8,8 @@
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
-        android:theme="@style/Theme.{{AppNameInCamelCase}}">
-        <activity android:name="com.{{company_name_in_lower_case}}.{{app_name_in_lower_case}}.MainActivity"
+        android:theme="@style/Theme.{{AppName}}">
+        <activity android:name="com.{{company_name}}.{{app_name}}.MainActivity"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />

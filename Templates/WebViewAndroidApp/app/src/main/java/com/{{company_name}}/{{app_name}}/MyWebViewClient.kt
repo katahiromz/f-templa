@@ -1,4 +1,4 @@
-package com.{{company_name_in_lower_case}}.{{app_name_in_lower_case}}
+package com.{{company_name}}.{{app_name}}
 
 import android.webkit.*
 

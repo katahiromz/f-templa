@@ -1,4 +1,4 @@
-package com.{{company_name_in_lower_case}}.{{app_name_in_lower_case}}
+package com.{{company_name}}.{{app_name}}
 
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -19,6 +19,6 @@ class ExampleInstrumentedTest {
     fun useAppContext() {
         // Context of the app under test.
         val appContext = InstrumentationRegistry.getInstrumentation().targetContext
-        assertEquals("com.{{company_name_in_lower_case}}.{{app_name_in_lower_case}}", appContext.packageName)
+        assertEquals("com.{{company_name}}.{{app_name}}", appContext.packageName)
     }
 }
