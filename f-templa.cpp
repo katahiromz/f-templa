@@ -51,7 +51,6 @@ LPCTSTR doLoadStr(UINT text)
     return doLoadStr(MAKEINTRESOURCE(text));
 }
 
-
 static void InitListView(HWND hListView, HIMAGELIST hImageList, LPCTSTR pszDir)
 {
     TCHAR spec[MAX_PATH];
@@ -765,6 +764,8 @@ static BOOL OnCreate(HWND hwnd, LPCREATESTRUCT lpCreateStruct)
 {
     g_hWnd = hwnd;
 
+    ::DragAcceptFiles(hwnd, TRUE);
+
     ::OleInitialize(NULL);
 
     DWORD style = WS_CHILD | WS_VISIBLE | LVS_ICON |
@@ -1472,6 +1473,29 @@ static LRESULT OnShellChange(HWND hwnd, WPARAM wParam, LPARAM lParam)
     return 0;
 }
 
+void OnDropFiles(HWND hwnd, HDROP hdrop)
+{
+    UINT cFiles = DragQueryFile(hdrop, 0xFFFFFFFF, NULL, 0);
+    for (UINT iFile = 0; iFile < cFiles; ++iFile)
+    {
+        WCHAR szFile[MAX_PATH + 1];
+        DragQueryFile(hdrop, iFile, szFile, _countof(szFile));
+        szFile[_countof(szFile) - 2] = szFile[_countof(szFile) - 1] = 0;
+        szFile[lstrlenW(szFile) + 1] = 0;
+
+        WCHAR szDir[MAX_PATH + 1];
+        lstrcpyn(szDir, g_root_dir, _countof(szDir));
+        szDir[_countof(szDir) - 2] = szDir[_countof(szDir) - 1] = 0;
+        szDir[lstrlenW(szDir) + 1] = 0;
+
+        SHFILEOPSTRUCT fileop = { hwnd, FO_COPY, szFile, szDir };
+        fileop.fFlags = FOF_NOCONFIRMMKDIR | FOF_SIMPLEPROGRESS;
+        SHFileOperation(&fileop);
+    }
+
+    DragFinish(hdrop);
+}
+
 LRESULT CALLBACK
 WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
@@ -1483,6 +1507,7 @@ WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
         HANDLE_MSG(hwnd, WM_CONTEXTMENU, OnContextMenu);
         HANDLE_MSG(hwnd, WM_NOTIFY, OnNotify);
         HANDLE_MSG(hwnd, WM_DESTROY, OnDestroy);
+        HANDLE_MSG(hwnd, WM_DROPFILES, OnDropFiles);
     case WM_SHELLCHANGE:
         return OnShellChange(hwnd, wParam, lParam);
     default:
