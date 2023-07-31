@@ -33,6 +33,8 @@ UINT g_nNotifyID = 0;
 SCROLLVIEW g_Dialog1ScrollView, g_Dialog2ScrollView;
 string_list_t g_ignore = { L"q", L"*.bin", L".git", L".svn", L".vs" };
 std::vector<std::pair<string_t, string_t>> g_history;
+POINT g_ptWnd;
+SIZE g_sizWnd;
 
 static INT s_iItemOld = -1;
 
@@ -49,6 +51,86 @@ LPCTSTR doLoadStr(LPCTSTR text)
 LPCTSTR doLoadStr(UINT text)
 {
     return doLoadStr(MAKEINTRESOURCE(text));
+}
+
+BOOL LoadSettings(void)
+{
+    g_ptWnd = { CW_USEDEFAULT, CW_USEDEFAULT };
+    g_sizWnd = { 500, 350 };
+
+    HKEY hKey;
+    LONG error = RegOpenKeyEx(HKEY_CURRENT_USER,
+                              TEXT("Software\\Katayama Hirofumi MZ\\FolderDeTemple"),
+                              0, KEY_READ, &hKey);
+    if (error)
+        return FALSE;
+
+    DWORD dwValue, cbValue;
+
+    cbValue = sizeof(dwValue);
+    error = RegQueryValueEx(hKey, TEXT("g_ptWnd.x"), NULL, NULL, (LPBYTE)&dwValue, &cbValue);
+    if (!error && cbValue == sizeof(dwValue))
+        g_ptWnd.x = INT(dwValue);
+
+    cbValue = sizeof(dwValue);
+    error = RegQueryValueEx(hKey, TEXT("g_ptWnd.y"), NULL, NULL, (LPBYTE)&dwValue, &cbValue);
+    if (!error && cbValue == sizeof(dwValue))
+        g_ptWnd.y = LONG(dwValue);
+
+    cbValue = sizeof(dwValue);
+    error = RegQueryValueEx(hKey, TEXT("g_sizWnd.cx"), NULL, NULL, (LPBYTE)&dwValue, &cbValue);
+    if (!error && cbValue == sizeof(dwValue))
+        g_sizWnd.cx = LONG(dwValue);
+
+    cbValue = sizeof(dwValue);
+    error = RegQueryValueEx(hKey, TEXT("g_sizWnd.cy"), NULL, NULL, (LPBYTE)&dwValue, &cbValue);
+    if (!error && cbValue == sizeof(dwValue))
+        g_sizWnd.cy = LONG(dwValue);
+
+    RegCloseKey(hKey);
+    return TRUE;
+}
+
+BOOL SaveSettings(void)
+{
+    HKEY hCompanyKey;
+    LONG error = RegCreateKeyEx(HKEY_CURRENT_USER,
+                                TEXT("Software\\Katayama Hirofumi MZ"),
+                                0, NULL, 0, KEY_WRITE, NULL, &hCompanyKey, NULL);
+    if (error)
+        return FALSE;
+
+    HKEY hAppKey;
+    error = RegCreateKeyEx(hCompanyKey,
+                           TEXT("FolderDeTemple"),
+                           0, NULL, 0, KEY_WRITE, NULL, &hAppKey, NULL);
+    if (error)
+    {
+        RegCloseKey(hCompanyKey);
+        return FALSE;
+    }
+
+    DWORD dwValue, cbValue;
+
+    cbValue = sizeof(dwValue);
+    dwValue = g_ptWnd.x;
+    RegSetValueEx(hAppKey, TEXT("g_ptWnd.x"), 0, REG_DWORD, (BYTE*)&dwValue, cbValue);
+
+    cbValue = sizeof(dwValue);
+    dwValue = g_ptWnd.y;
+    RegSetValueEx(hAppKey, TEXT("g_ptWnd.y"), 0, REG_DWORD, (BYTE*)&dwValue, cbValue);
+
+    cbValue = sizeof(dwValue);
+    dwValue = g_sizWnd.cx;
+    RegSetValueEx(hAppKey, TEXT("g_sizWnd.cx"), 0, REG_DWORD, (BYTE*)&dwValue, cbValue);
+
+    cbValue = sizeof(dwValue);
+    dwValue = g_sizWnd.cy;
+    RegSetValueEx(hAppKey, TEXT("g_sizWnd.cy"), 0, REG_DWORD, (BYTE*)&dwValue, cbValue);
+
+    RegCloseKey(hAppKey);
+    RegCloseKey(hCompanyKey);
+    return TRUE;
 }
 
 static void InitListView(HWND hListView, HIMAGELIST hImageList, LPCTSTR pszDir)
@@ -766,6 +848,11 @@ static BOOL OnCreate(HWND hwnd, LPCREATESTRUCT lpCreateStruct)
 
     ::DragAcceptFiles(hwnd, TRUE);
 
+    RECT rc;
+    GetWindowRect(hwnd, &rc);
+    g_ptWnd.x = rc.left;
+    g_ptWnd.y = rc.top;
+
     ::OleInitialize(NULL);
 
     DWORD style = WS_CHILD | WS_VISIBLE | LVS_ICON |
@@ -855,6 +942,13 @@ static void OnSize(HWND hwnd, UINT state, int cx, int cy)
     ::MoveWindow(g_hwndDialogs[g_iDialog], 0, 0, cxDialog, cyDialog, TRUE);
     rc.left += cxDialog;
     ::MoveWindow(g_hListView, rc.left, rc.top, rc.right - rc.left, rc.bottom - rc.top, TRUE);
+
+    if (IsIconic(hwnd) || IsZoomed(hwnd))
+        return;
+
+    GetWindowRect(hwnd, &rc);
+    g_sizWnd.cx = rc.right - rc.left;
+    g_sizWnd.cy = rc.bottom - rc.top;
 }
 
 HRESULT ExecuteContextCommand(HWND hwnd, IContextMenu *pContextMenu, UINT nCmd)
@@ -1499,6 +1593,17 @@ void OnDropFiles(HWND hwnd, HDROP hdrop)
     DragFinish(hdrop);
 }
 
+void OnMove(HWND hwnd, int x, int y)
+{
+    if (IsIconic(hwnd) || IsZoomed(hwnd))
+        return;
+
+    RECT rc;
+    GetWindowRect(hwnd, &rc);
+    g_ptWnd.x = rc.left;
+    g_ptWnd.y = rc.top;
+}
+
 LRESULT CALLBACK
 WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
@@ -1506,6 +1611,7 @@ WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
     {
         HANDLE_MSG(hwnd, WM_CREATE, OnCreate);
         HANDLE_MSG(hwnd, WM_ACTIVATE, OnActivate);
+        HANDLE_MSG(hwnd, WM_MOVE, OnMove);
         HANDLE_MSG(hwnd, WM_SIZE, OnSize);
         HANDLE_MSG(hwnd, WM_CONTEXTMENU, OnContextMenu);
         HANDLE_MSG(hwnd, WM_NOTIFY, OnNotify);
@@ -1527,6 +1633,8 @@ WinMain(HINSTANCE   hInstance,
 {
     InitCommonControls();
 
+    LoadSettings();
+
     WNDCLASSEX wcx = { sizeof(wcx) };
     wcx.style = CS_HREDRAW | CS_VREDRAW | CS_DBLCLKS;
     wcx.lpfnWndProc = WindowProc;
@@ -1547,7 +1655,7 @@ WinMain(HINSTANCE   hInstance,
     DWORD style = WS_OVERLAPPEDWINDOW;
     DWORD exstyle = 0;
     HWND hwnd = ::CreateWindowEx(exstyle, CLASSNAME, doLoadStr(IDS_APPVERSION), style,
-                                 CW_USEDEFAULT, CW_USEDEFAULT, 500, 350,
+                                 g_ptWnd.x, g_ptWnd.y, g_sizWnd.cx, g_sizWnd.cy,
                                  NULL, NULL, hInstance, NULL);
     if (!hwnd)
     {
@@ -1576,6 +1684,8 @@ WinMain(HINSTANCE   hInstance,
         TranslateMessage(&msg);
         DispatchMessage(&msg);
     }
+
+    SaveSettings();
 
     return INT(msg.wParam);
 }
