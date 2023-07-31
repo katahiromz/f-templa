@@ -1443,12 +1443,15 @@ static LRESULT OnShellChange(HWND hwnd, WPARAM wParam, LPARAM lParam)
                 SHFILEINFO info;
                 SHGetFileInfo(pszFileName, dwAttrs, &info, sizeof(info),
                               SHGFI_SYSICONINDEX | SHGFI_USEFILEATTRIBUTES);
-                LV_ITEM item = { LVIF_TEXT | LVIF_IMAGE };
-                item.iItem    = ListView_GetItemCount(g_hListView);
-                item.iSubItem = 0;
-                item.pszText  = pszFileName;
-                item.iImage   = info.iIcon;
-                ListView_InsertItem(g_hListView, &item);
+                LV_ITEM item = { LVIF_TEXT | LVIF_IMAGE | LVIF_STATE };
+                item.iItem     = ListView_GetItemCount(g_hListView);
+                item.iSubItem  = 0;
+                item.pszText   = pszFileName;
+                item.iImage    = info.iIcon;
+                item.state     = LVIS_SELECTED | LVIS_FOCUSED;
+                item.stateMask = LVIS_SELECTED | LVIS_FOCUSED;
+                iItem = ListView_InsertItem(g_hListView, &item);
+                ListView_EnsureVisible(g_hListView, iItem, FALSE);
             }
             break;
         case SHCNE_DELETE:
