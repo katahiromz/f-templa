@@ -31,7 +31,7 @@ CDropTarget* g_pDropTarget = NULL;
 CDropSource* g_pDropSource = NULL;
 UINT g_nNotifyID = 0;
 SCROLLVIEW g_Dialog1ScrollView, g_Dialog2ScrollView;
-string_list_t g_ignore = { L"q", L"*.bin", L".git", L".svg", L".vs" };
+string_list_t g_ignore = { L"q", L"*.bin", L".git", L".svn", L".vs" };
 std::vector<std::pair<string_t, string_t>> g_history;
 
 static INT s_iItemOld = -1;

@@ -6,3 +6,5 @@
     - バイナリファイルの扱いを修正。
     - WebViewAndroidAppテンプレートを追加。
     - ConsoleApp、HelloWorldInC、HelloWorldInCppテンプレートを追加。
+- 2023-08-01 Ver.0.8
+    - Subversionのフォルダ「.svn」を無視するように設定。
