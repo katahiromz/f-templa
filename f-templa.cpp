@@ -140,10 +140,9 @@ BOOL SaveSettings(void)
 // リストビューを初期化する。
 static void InitListView(HWND hListView, HIMAGELIST hImageList, LPCTSTR pszDir)
 {
-    TCHAR spec[MAX_PATH];
-
     GetFullPathName(pszDir, _countof(g_root_dir), g_root_dir, NULL);
 
+    TCHAR spec[MAX_PATH];
     StringCchCopy(spec, _countof(spec), g_root_dir);
     PathAddBackslash(spec);
     StringCchCat(spec, _countof(spec), TEXT("*"));
@@ -187,11 +186,6 @@ static BOOL Dialog1_OnInitDialog(HWND hwnd, HWND hwndFocus, LPARAM lParam)
     return TRUE;
 }
 
-// WM_COMMAND - ダイアログ1のコマンド処理。
-static void Dialog1_OnCommand(HWND hwnd, int id, HWND hwndCtl, UINT codeNotify)
-{
-}
-
 // WM_SIZE - ダイアログ1のサイズ変更。
 static void Dialog1_OnSize(HWND hwnd, UINT state, int cx, int cy)
 {
@@ -226,7 +220,6 @@ Dialog1Proc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
     switch (uMsg)
     {
         HANDLE_MSG(hwnd, WM_INITDIALOG, Dialog1_OnInitDialog);
-        HANDLE_MSG(hwnd, WM_COMMAND, Dialog1_OnCommand);
         HANDLE_MSG(hwnd, WM_SIZE, Dialog1_OnSize);
         HANDLE_MSG(hwnd, WM_VSCROLL, Dialog1_OnVScroll);
         HANDLE_MSG(hwnd, WM_MOUSEWHEEL, Dialog1_OnMouseWheel);
@@ -249,19 +242,22 @@ mapping_t DoGetMapping(void)
     mapping_t mapping;
     for (UINT i = 0; i < MAX_REPLACEITEMS; ++i)
     {
-        TCHAR szKey[128];
-        TCHAR szValue[1024];
+        // テキストボックスからテキストを取得する。
+        TCHAR szKey[128], szValue[1024];
         ::GetDlgItemText(hwndDlg, IDC_FROM_00 + i, szKey, _countof(szKey));
         ::GetDlgItemText(hwndDlg, IDC_TO_00 + i, szValue, _countof(szValue));
-        StrTrim(szKey, TEXT(" \t\r\n\x3000"));
-        if (szKey[0] == 0)
-            continue;
 
+        // 前後の空白を削除。
+        StrTrim(szKey, TEXT(" \t\r\n\x3000"));
+        if (szKey[0] == 0) // キーが空の場合は無視。
+            continue;
         StrTrim(szValue, TEXT(" \t\r\n\x3000"));
+
+        // キーと値のペアを写像に登録。
         mapping[szKey] = szValue;
     }
 
-    return mapping;
+    return mapping; // 写像を返す。
 }
 
 // 入力ボックスのコールバック関数。
@@ -308,7 +304,7 @@ static void Preset_OnDelete(HWND hwnd)
     }
 }
 
-// psh2 - プリセットのすべて削除。
+// psh2 - プリセットの「すべて削除」。
 static void Preset_OnDeleteAll(HWND hwnd)
 {
     HWND hLst1 = GetDlgItem(hwnd, lst1);
@@ -497,8 +493,10 @@ static void UpdateValue(const string_t& first, string_t& second)
 // 置き換え項目のUIを更新する。
 static void Dialog2_RefreshSubst(HWND hwnd, mapping_t& mapping)
 {
+    // 置き換え項目をいったんクリアする。
     ::SendMessage(hwnd, WM_COMMAND, ID_REFRESH_SUBST, 0);
 
+    // テキストボックスを更新する。
     UINT i = 0;
     for (auto& pair : mapping)
     {
@@ -516,9 +514,6 @@ static void Dialog2_InitSubst(HWND hwndDlg, INT iItem);
 // メニューを表示し、処理を行う。
 static void Dialog2_OnPreset(HWND hwnd)
 {
-    HWND hwndButton = GetDlgItem(hwnd, IDC_DARROW_PRESET);
-    assert(hwndButton);
-
     INT iItem = ListView_GetNextItem(g_hListView, -1, LVNI_SELECTED);
     if (iItem == -1)
         return;
@@ -528,18 +523,27 @@ static void Dialog2_OnPreset(HWND hwnd)
     StringCchCopy(szPath, _countof(szPath), g_root_dir);
     PathAppend(szPath, szItem);
 
+    // FDTファイルのパスファイル名を構築する。
     string_t path = szPath;
     path += L".fdt";
 
+    // FDTファイルを読み込む。
+    FDT_FILE fdt_file;
+    fdt_file.load(path.c_str());
+
+    // ボタンの位置を取得する。
+    HWND hwndButton = GetDlgItem(hwnd, IDC_DARROW_PRESET);
     RECT rc;
     ::GetWindowRect(hwndButton, &rc);
 
+    // 新しいメニューを作成する。
     HMENU hMenu = ::CreatePopupMenu();
+
+    // 「値の更新」「名前を付けて保存」メニュー項目を追加する。
     ::AppendMenu(hMenu, MF_STRING, ID_UPDATEVALUE, doLoadStr(IDS_UPDATEVALUE));
     ::AppendMenu(hMenu, MF_STRING, ID_SAVEPRESET, doLoadStr(IDS_SAVEPRESET));
-
-    FDT_FILE fdt_file;
-    fdt_file.load(path.c_str());
+    // メニューに区分線を追加する。
+    ::AppendMenu(hMenu, MF_SEPARATOR, 0, NULL);
 
     string_list_t section_names;
     for (auto& pair : fdt_file.name2section)
@@ -549,8 +553,6 @@ static void Dialog2_OnPreset(HWND hwnd)
 
         section_names.push_back(pair.first);
     }
-
-    ::AppendMenu(hMenu, MF_SEPARATOR, 0, NULL);
 
     const INT c_section_first = 1000;
     if (section_names.size())
@@ -563,22 +565,27 @@ static void Dialog2_OnPreset(HWND hwnd)
             ::AppendMenu(hMenu, MF_STRING, i++, name.c_str());
         }
 
+        // 区分線を追加。
         ::AppendMenu(hMenu, MF_SEPARATOR, 0, NULL);
+        // 「編集...」メニュー項目を追加。
         ::AppendMenu(hMenu, MF_STRING, ID_EDITPRESET, doLoadStr(IDS_EDITPRESET));
     }
 
+    // 「リセット」メニュー項目を追加する。
     ::AppendMenu(hMenu, MF_STRING, ID_RESET, doLoadStr(IDS_RESET));
 
+    // 実際にポップアップメニューを表示し、メニュー項目が選択されるのを待つ。
     INT iChoice = ::TrackPopupMenu(hMenu, TPM_RETURNCMD | TPM_LEFTALIGN | TPM_LEFTBUTTON,
                                    rc.right, rc.top, 0, hwnd, &rc);
-    ::DestroyMenu(hMenu);
+    ::DestroyMenu(hMenu); // メニューを破棄する。
 
+    // 選択されたメニュー項目に従って処理を行う。
     switch (iChoice)
     {
-    case 0:
+    case 0: // 何も選択されなかった。
         return;
 
-    case ID_SAVEPRESET:
+    case ID_SAVEPRESET: //「名前を付けて保存」メニュー項目。
         {
             TCHAR name[128];
             const INT c_max = 100;
@@ -602,6 +609,7 @@ static void Dialog2_OnPreset(HWND hwnd)
 
             if (iSection != c_max)
             {
+                // 入力ボックスで入力を待つ。
                 string_t section_name = name;
                 if (InputBox(hwnd, section_name, MAKEINTRESOURCE(IDS_DONAME), NULL, InputBoxCallback))
                 {
