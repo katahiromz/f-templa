@@ -19,6 +19,7 @@
 #define CLASSNAME TEXT("FolderDeTemple")    // ウィンドウクラス名。
 #define WM_SHELLCHANGE (WM_USER + 100)      // シェル通知を受け取るメッセージ。
 #define MAX_REPLACEITEMS 16                 // 置き換え項目の最大個数。
+#define IDW_LISTVIEW 1
 
 HWND g_hWnd = NULL; // メインウィンドウ。
 HWND g_hListView = NULL; // リストビューコントロール。
@@ -922,7 +923,7 @@ static BOOL OnCreate(HWND hwnd, LPCREATESTRUCT lpCreateStruct)
         WS_BORDER | WS_VSCROLL | WS_HSCROLL;
     DWORD exstyle = WS_EX_CLIENTEDGE;
     g_hListView = ::CreateWindowEx(exstyle, WC_LISTVIEW, NULL, style,
-        0, 0, 0, 0, hwnd, (HMENU)(INT_PTR)1, GetModuleHandle(NULL), NULL);
+        0, 0, 0, 0, hwnd, (HMENU)(INT_PTR)IDW_LISTVIEW, GetModuleHandle(NULL), NULL);
     if (g_hListView == NULL)
         return FALSE;
 
@@ -1007,9 +1008,11 @@ static void OnSize(HWND hwnd, UINT state, int cx, int cy)
     rc.left += cxDialog;
     ::MoveWindow(g_hListView, rc.left, rc.top, rc.right - rc.left, rc.bottom - rc.top, TRUE);
 
+    // 最小化または最大化されているときは無視する。
     if (IsIconic(hwnd) || IsZoomed(hwnd))
         return;
 
+    // サイズの設定を覚えておく。
     GetWindowRect(hwnd, &rc);
     g_sizWnd.cx = rc.right - rc.left;
     g_sizWnd.cy = rc.bottom - rc.top;
@@ -1158,18 +1161,22 @@ static void DeleteTempDir(HWND hwnd)
 // FDTファイルを保存する。
 bool SaveFdtFile(LPCTSTR pszBasePath, mapping_t& mapping)
 {
+    // FDTファイルのパスファイル名を構築する。
     string_t path = pszBasePath;
     path += L".fdt";
 
+    // 書き込みの前にいったん読み込む。
     FDT_FILE fdt_file;
     fdt_file.load(path.c_str());
 
+    // 最終的設定を保存する。
     auto& latest_section = fdt_file.name2section[L":LATEST"];
     for (auto& pair : mapping)
     {
         latest_section.assign(pair.first, pair.second);
     }
 
+    // 履歴を保存する。
     auto& history_section = fdt_file.name2section[L":HISTORY"];
     for (auto& pair : mapping)
     {
@@ -1180,6 +1187,7 @@ bool SaveFdtFile(LPCTSTR pszBasePath, mapping_t& mapping)
         history_section.assign(pair);
     }
 
+    // FDTファイルを書き込む。
     return fdt_file.save(path.c_str());
 }
 
@@ -1198,17 +1206,24 @@ static void OnDeSelectItem(HWND hwnd, INT iItem)
 // WM_DESTROY - メインウィンドウの破棄。
 static void OnDestroy(HWND hwnd)
 {
+    // 選択を解除する処理。
     if (g_iDialog == 1 && s_iItemOld != -1)
         OnDeSelectItem(hwnd, s_iItemOld);
 
+    // 一時ディレクトリを削除。
     DeleteTempDir(hwnd);
 
+    // シェル変更通知の登録を解除する。
     if (g_nNotifyID)
     {
         SHChangeNotifyDeregister(g_nNotifyID);
         g_nNotifyID = 0;
     }
+
+    // D&Dを無効化する。
     ::RevokeDragDrop(hwnd);
+
+    // D&Dを破棄する。
     if (g_pDropTarget)
     {
         g_pDropTarget->Release();
@@ -1219,16 +1234,22 @@ static void OnDestroy(HWND hwnd)
         g_pDropSource->Release();
         g_pDropSource = NULL;
     }
+
+    // イメージリストを破棄する。
     if (g_hImageList)
     {
         ImageList_Destroy(g_hImageList);
         g_hImageList = NULL;
     }
+
+    // リストビューを破棄する。
     if (g_hListView)
     {
         ::DestroyWindow(g_hListView);
         g_hListView = NULL;
     }
+
+    // 子ダイアログを破棄する。
     for (UINT i = 0; i < _countof(g_hwndDialogs); ++i)
     {
         if (g_hwndDialogs[i])
@@ -1237,7 +1258,11 @@ static void OnDestroy(HWND hwnd)
             g_hwndDialogs[i] = NULL;
         }
     }
+
+    // OLEを破棄する。
     OleUninitialize();
+
+    // メッセージループの終了。
     PostQuitMessage(0);
 }
 
@@ -1322,15 +1347,19 @@ BOOL Dialog2_InitSubstDir(HWND hwndDlg, LPCTSTR pszPath, mapping_t& mapping)
 // FDTファイルを読み込む。
 static bool LoadFdtFile(LPCTSTR pszBasePath, mapping_t& mapping)
 {
+    // 履歴を削除する。
     g_history.clear();
 
+    // FDTファイルのパスファイル名を構築する。
     string_t path = pszBasePath;
     path += L".fdt";
 
+    // FDTファイルを読み込む。
     FDT_FILE fdt_file;
     if (!fdt_file.load(path.c_str()))
         return false;
 
+    // 最終更新を読み込む。
     auto it = fdt_file.name2section.find(L":LATEST");
     if (it != fdt_file.name2section.end())
     {
@@ -1343,6 +1372,7 @@ static bool LoadFdtFile(LPCTSTR pszBasePath, mapping_t& mapping)
         }
     }
 
+    // 履歴を読み込む。
     it = fdt_file.name2section.find(L":HISTORY");
     if (it != fdt_file.name2section.end())
     {
@@ -1360,67 +1390,83 @@ static bool LoadFdtFile(LPCTSTR pszBasePath, mapping_t& mapping)
 // 置き換え項目を初期化する。
 static void Dialog2_InitSubst(HWND hwndDlg, INT iItem)
 {
+    // 項目のパスファイル名を構築する。
     TCHAR szItem[MAX_PATH], szPath[MAX_PATH];
     ListView_GetItemText(g_hListView, iItem, 0, szItem, _countof(szItem));
     StringCchCopy(szPath, _countof(szPath), g_root_dir);
     PathAppend(szPath, szItem);
 
+    // 写像を初期化する。
     mapping_t mapping;
     if (PathIsDirectory(szPath))
         Dialog2_InitSubstDir(hwndDlg, szPath, mapping);
     else
         Dialog2_InitSubstFile(hwndDlg, szPath, mapping);
 
-    if (!LoadFdtFile(szPath, mapping))
+    if (LoadFdtFile(szPath, mapping)) // FDTファイルの読み込みに成功したら
     {
-        for (auto& pair : mapping)
-        {
-            UpdateValue(pair.first, pair.second);
-        }
-    }
-    else
-    {
+        // 空の値を更新する。
         for (auto& pair : mapping)
         {
             if (pair.second.empty())
                 UpdateValue(pair.first, pair.second);
         }
     }
+    else
+    {
+        // 値を更新する。
+        for (auto& pair : mapping)
+        {
+            UpdateValue(pair.first, pair.second);
+        }
+    }
 
+    // ダイアログ2のUIを更新する。
     Dialog2_RefreshSubst(hwndDlg, mapping);
 
+    // 写像をFDTファイルに保存する。
     SaveFdtFile(szPath, mapping);
 }
 
 // テンプレートからの生成。
 BOOL DoTempla(HWND hwnd, LPTSTR pszPath, INT iItem)
 {
+    // 一時フォルダを削除する。
     DeleteTempDir(hwnd);
 
+    // ファイルタイトルを取得する。
     string_t filename = PathFindFileName(pszPath);
 
+    // 一時フォルダを取得する。
     TCHAR temp_path[MAX_PATH];
     GetTempPath(_countof(temp_path), temp_path);
 
+    // 一時ファイル名を取得する。
     TCHAR temp_dir[MAX_PATH];
     GetTempFileName(temp_path, L"FDT", 0, temp_dir);
 
+    // 一時フォルダを作成する。
     DeleteFile(temp_dir);
     if (!CreateDirectory(temp_dir, NULL))
         return FALSE;
 
+    // 一時フォルダのパスファイル名を保存する。
     StringCchCopy(g_temp_dir, _countof(g_temp_dir), temp_dir);
 
+    // 写像を取得し、FDTファイルとして保存する。
     mapping_t mapping = DoGetMapping();
     SaveFdtFile(pszPath, mapping);
 
+    // 主処理を行う。
     templa(pszPath, temp_dir, mapping, g_ignore);
 
+    // ファイル名を置き換えする。
     for (auto& pair : mapping)
     {
         str_replace(filename, pair.first, pair.second);
     }
 
+    // パスファイル名を再構築する。
     StringCchCopy(pszPath, MAX_PATH, temp_dir);
     PathAppend(pszPath, filename.c_str());
     return TRUE;
@@ -1429,16 +1475,20 @@ BOOL DoTempla(HWND hwnd, LPTSTR pszPath, INT iItem)
 // LVN_BEGINDRAG / LVN_BEGINRDRAG - ドラッグが開始された。
 static void OnBeginDrag(HWND hwnd, NM_LISTVIEW* pListView)
 {
+    // 選択がなければ無視。
     INT cSelected = ListView_GetSelectedCount(g_hListView);
     if (cSelected == 0)
         return;
 
+    // 絶対PIDLを作成。
     PIDLIST_ABSOLUTE* ppidlAbsolute;
     ppidlAbsolute = (PIDLIST_ABSOLUTE*)CoTaskMemAlloc(sizeof(PIDLIST_ABSOLUTE) * cSelected);
 
+    // 子PIDLを作成。
     PITEMID_CHILD* ppidlChild;
     ppidlChild = (PITEMID_CHILD*)CoTaskMemAlloc(sizeof(PITEMID_CHILD) * cSelected);
 
+    // いずれかが失敗していれば破棄して戻る。
     if (!ppidlAbsolute || !ppidlChild)
     {
         CoTaskMemFree(ppidlAbsolute);
@@ -1446,6 +1496,7 @@ static void OnBeginDrag(HWND hwnd, NM_LISTVIEW* pListView)
         return;
     }
 
+    // 各選択項目について一時ファイルを作成し、ドロップ元とする。
     INT cItems = ListView_GetItemCount(g_hListView);
     for (INT i = 0, j = 0; i < cItems; ++i)
     {
@@ -1460,27 +1511,34 @@ static void OnBeginDrag(HWND hwnd, NM_LISTVIEW* pListView)
         }
     }
 
+    // IShellFolderを取得し、バインドする。
     IShellFolder* pShellFolder = NULL;
     SHBindToParent(ppidlAbsolute[0], IID_PPV_ARGS(&pShellFolder), NULL);
 
+    // 末端PIDLを取得する。
     for (INT i = 0; i < cSelected; i++)
         ppidlChild[i] = ILFindLastID(ppidlAbsolute[i]);
 
+    // ドラッグの開始。ただし自分自身へのドロップは禁止する。
     g_pDropSource->BeginDrag();
     ::DragAcceptFiles(hwnd, FALSE);
 
+    // データオブジェクトを取得する。
     IDataObject *pDataObject = NULL;
     pShellFolder->GetUIObjectOf(NULL, cSelected, (LPCITEMIDLIST*)ppidlChild, IID_IDataObject, NULL,
                                 (void **)&pDataObject);
     if (pDataObject)
     {
+        // ドラッグを処理する。
         DWORD dwEffect = DROPEFFECT_NONE;
         DoDragDrop(pDataObject, g_pDropSource, DROPEFFECT_COPY, &dwEffect);
     }
 
+    // ドラッグの終了。
     g_pDropSource->EndDrag();
     ::DragAcceptFiles(hwnd, TRUE);
 
+    // PIDLの解放。
     for (INT i = 0; i < cSelected; ++i)
         CoTaskMemFree(ppidlAbsolute[i]);
 
@@ -1491,15 +1549,17 @@ static void OnBeginDrag(HWND hwnd, NM_LISTVIEW* pListView)
 // VK_DELETE - リストビューでDelキーが押された。
 static void OnListViewDeleteKey(HWND hwnd, INT iItem)
 {
-    TCHAR szPath[MAX_PATH], szItem[MAX_PATH];
-    ZeroMemory(szPath, sizeof(szPath));
+    TCHAR szPath[MAX_PATH + 1], szItem[MAX_PATH];
+    ZeroMemory(szPath, sizeof(szPath)); // SHFileOperationのために、二重ヌル終端にする。
 
+    // 項目のパスファイル名を取得。
     StringCchCopy(szPath, _countof(szPath), g_root_dir);
     ListView_GetItemText(g_hListView, iItem, 0, szItem, _countof(szItem));
     PathAppend(szPath, szItem);
 
-    if (::GetKeyState(VK_SHIFT) < 0)
+    if (::GetKeyState(VK_SHIFT) < 0) // Shiftキーが押されている
     {
+        // 普通に削除する。
         if (!::DeleteFile(szPath))
         {
             MessageBox(hwnd, doLoadStr(IDS_CANTDELETEFILE), NULL, MB_ICONERROR);
@@ -1507,6 +1567,7 @@ static void OnListViewDeleteKey(HWND hwnd, INT iItem)
     }
     else
     {
+        // シェルを使って削除する。
         SHFILEOPSTRUCT op = { hwnd, FO_DELETE, szPath };
         op.fFlags = FOF_ALLOWUNDO;
         ::SHFileOperation(&op);
@@ -1520,11 +1581,11 @@ static LRESULT OnListViewKeyDown(HWND hwnd, LV_KEYDOWN *pKeyDown)
 
     switch (pKeyDown->wVKey)
     {
-    case VK_RETURN:
-        ShowContextMenu(hwnd, iItem, 0, 0, CMF_DEFAULTONLY);
+    case VK_RETURN: // Enterキーが押された。
+        ShowContextMenu(hwnd, iItem, 0, 0, CMF_DEFAULTONLY); // 開く処理。
         break;
 
-    case VK_DELETE:
+    case VK_DELETE: // Delキー（削除）が押された。
         if (iItem != -1)
             OnListViewDeleteKey(hwnd, iItem);
         break;
@@ -1537,56 +1598,74 @@ static LRESULT OnListViewKeyDown(HWND hwnd, LV_KEYDOWN *pKeyDown)
 static LRESULT OnListViewItemChanged(HWND hwnd, NM_LISTVIEW* pListView)
 {
     INT iItem = ListView_GetNextItem(g_hListView, -1, LVNI_SELECTED);
-    if (iItem != -1)
+    if (iItem != -1) // リストビューで何かが選択された。
     {
+        // ダイアログ2に変更。
         g_iDialog = 1;
+
+        // ステータスバーを更新。
         ::SendMessage(g_hStatusBar, SB_SETTEXT, 0 | 0, (LPARAM)doLoadStr(IDS_TYPESUBST));
+
+        // 置き換え項目を初期化。
         Dialog2_InitSubst(g_hwndDialogs[1], iItem);
-        s_iItemOld = iItem;
     }
     else
     {
+        // 選択を解除する前に処理を行う。
         if (g_iDialog == 1 && s_iItemOld != -1)
             OnDeSelectItem(hwnd, s_iItemOld);
 
+        // ダイアログ1に変更。
         g_iDialog = 0;
+
+        // ステータスバーを更新。
         ::SendMessage(g_hStatusBar, SB_SETTEXT, 0 | 0, (LPARAM)doLoadStr(IDS_SELECTITEM));
-        s_iItemOld = iItem;
     }
 
+    // 古い項目のインデックスを保存する。
+    s_iItemOld = iItem;
+
+    // g_iDialogが表すダイアログ以外非表示。
     for (INT i = 0; i < _countof(g_hwndDialogs); ++i)
-        ::ShowWindow(g_hwndDialogs[i], SW_HIDE);
+    {
+        if (i != g_iDialog)
+            ::ShowWindowAsync(g_hwndDialogs[i], SW_HIDE);
+    }
+    ::ShowWindowAsync(g_hwndDialogs[g_iDialog], SW_SHOWNOACTIVATE);
 
-    ::ShowWindow(g_hwndDialogs[g_iDialog], SW_SHOWNOACTIVATE);
-
+    // WM_SIZEのハンドラによるコントロールの再配置。
     ::PostMessage(hwnd, WM_SIZE, 0, 0);
+
     return 0;
 }
 
 // WM_NOTIFY - メインウィンドウへの通知メッセージ。
 static LRESULT OnNotify(HWND hwnd, int idFrom, LPNMHDR pnmhdr)
 {
-    if (idFrom != 1)
+    // リストビュー以外は無視。
+    if (idFrom != IDW_LISTVIEW)
         return 0;
 
     switch (pnmhdr->code)
     {
-    case NM_DBLCLK:
+    case NM_DBLCLK: // ダブルクリックされた。
         {
+            // 開く処理。
             INT iItem = ListView_GetNextItem(g_hListView, -1, LVNI_SELECTED);
             if (iItem != -1)
                 ShowContextMenu(hwnd, iItem, 0, 0, CMF_DEFAULTONLY);
         }
         break;
 
-    case LVN_KEYDOWN:
+    case LVN_KEYDOWN: // キーが押された。
         return OnListViewKeyDown(hwnd, (LV_KEYDOWN*)pnmhdr);
 
-    case LVN_ITEMCHANGED:
+    case LVN_ITEMCHANGED: // 項目が変更された。
         return OnListViewItemChanged(hwnd, (NM_LISTVIEW*)pnmhdr);
 
     case LVN_BEGINDRAG:
     case LVN_BEGINRDRAG:
+        // ドラッグが開始された。
         OnBeginDrag(hwnd, (NM_LISTVIEW*)pnmhdr);
         break;
     }
@@ -1597,6 +1676,7 @@ static LRESULT OnNotify(HWND hwnd, int idFrom, LPNMHDR pnmhdr)
 // シェル変更通知が届いた。
 static LRESULT OnShellChange(HWND hwnd, WPARAM wParam, LPARAM lParam)
 {
+    // 変更通知を処理するための前処理。
     LPITEMIDLIST *ppidlAbsolute;
     LONG lEvent;
     HANDLE hLock = SHChangeNotification_Lock((HANDLE)wParam, (DWORD)lParam, &ppidlAbsolute, &lEvent);
@@ -1606,6 +1686,7 @@ static LRESULT OnShellChange(HWND hwnd, WPARAM wParam, LPARAM lParam)
         return 0;
     }
 
+    // 変更されたパスの親ディレクトリを取得する。
     TCHAR szPath[MAX_PATH];
     SHGetPathFromIDList(ppidlAbsolute[0], szPath);
     PathRemoveFileSpec(szPath);
@@ -1620,39 +1701,50 @@ static LRESULT OnShellChange(HWND hwnd, WPARAM wParam, LPARAM lParam)
         {
         case SHCNE_CREATE:
         case SHCNE_MKDIR:
+            // ファイルまたはフォルダの追加。FDTファイルは無視する。
             if (iItem == -1 && !templa_wildcard(pszFileName, L"*.fdt"))
             {
+                // アイコンインデックスを取得する。
                 DWORD dwAttrs = ((lEvent == SHCNE_MKDIR) ? FILE_ATTRIBUTE_DIRECTORY : 0);
                 SHFILEINFO info;
                 SHGetFileInfo(pszFileName, dwAttrs, &info, sizeof(info),
                               SHGFI_SYSICONINDEX | SHGFI_USEFILEATTRIBUTES);
+
+                // リストビューに項目を追加する。
                 LV_ITEM item = { LVIF_TEXT | LVIF_IMAGE };
                 item.iItem     = ListView_GetItemCount(g_hListView);
                 item.iSubItem  = 0;
                 item.pszText   = pszFileName;
                 item.iImage    = info.iIcon;
                 iItem = ListView_InsertItem(g_hListView, &item);
+
+                // 追加された項目が見えるように表示位置を移動する。
                 ListView_EnsureVisible(g_hListView, iItem, FALSE);
             }
             break;
+
         case SHCNE_DELETE:
         case SHCNE_RMDIR:
+            // ファイルまたはフォルダの削除。リストビューから削除する。
             ListView_DeleteItem(g_hListView, iItem);
             break;
+
         case SHCNE_RENAMEFOLDER:
         case SHCNE_RENAMEITEM:
+            // ファイルまたはフォルダの名前変更。
             {
                 SHGetPathFromIDList(ppidlAbsolute[1], szPath);
                 string_t filename = PathFindFileName(szPath);
-                if (templa_wildcard(filename, L"*.fdt"))
+                if (templa_wildcard(filename, L"*.fdt")) // FDTファイルは無視する。
                     ListView_DeleteItem(g_hListView, iItem);
-                else
+                else // さもなければ項目名を更新する。
                     ListView_SetItemText(g_hListView, iItem, 0, &filename[0]);
             }
             break;
         }
     }
 
+    // 変更通知の後処理。
     SHChangeNotification_Unlock(hLock);
     return 0;
 }
@@ -1660,33 +1752,46 @@ static LRESULT OnShellChange(HWND hwnd, WPARAM wParam, LPARAM lParam)
 // WM_DROPFILES - メインウィンドウにファイルがドロップされた。
 void OnDropFiles(HWND hwnd, HDROP hdrop)
 {
+    // ドロップされたファイルの個数を取得する。
     UINT cFiles = DragQueryFile(hdrop, 0xFFFFFFFF, NULL, 0);
+
+    // ドロップされた各ファイルについて。
     for (UINT iFile = 0; iFile < cFiles; ++iFile)
     {
+        // 一つずつドロップされたファイルのパス名を取得する。
         WCHAR szFile[MAX_PATH + 1];
         DragQueryFile(hdrop, iFile, szFile, _countof(szFile));
+
+        // SHFileOperationのために二重ヌル終端にする。また、バッファオーバーランを避ける。
         szFile[_countof(szFile) - 2] = szFile[_countof(szFile) - 1] = 0;
         szFile[lstrlenW(szFile) + 1] = 0;
 
+        // コピー先フォルダを取得する。
         WCHAR szDir[MAX_PATH + 1];
         lstrcpyn(szDir, g_root_dir, _countof(szDir));
+
+        // SHFileOperationのために二重ヌル終端にする。また、バッファオーバーランを避ける。
         szDir[_countof(szDir) - 2] = szDir[_countof(szDir) - 1] = 0;
         szDir[lstrlenW(szDir) + 1] = 0;
 
+        // ファイルコピー処理を行う。
         SHFILEOPSTRUCT fileop = { hwnd, FO_COPY, szFile, szDir };
         fileop.fFlags = FOF_NOCONFIRMMKDIR | FOF_SIMPLEPROGRESS;
         SHFileOperation(&fileop);
     }
 
+    // HDROPの破棄。
     DragFinish(hdrop);
 }
 
 // WM_MOVE - メインウィンドウの移動。
 void OnMove(HWND hwnd, int x, int y)
 {
+    // 最小化または最大化されているときは無視する。
     if (IsIconic(hwnd) || IsZoomed(hwnd))
         return;
 
+    // 位置を覚えておく。
     RECT rc;
     GetWindowRect(hwnd, &rc);
     g_ptWnd.x = rc.left;
