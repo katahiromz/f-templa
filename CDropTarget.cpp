@@ -3,6 +3,7 @@
 #include <shlwapi.h>
 #include <strsafe.h>
 #include "CDropTarget.hpp"
+#include "CDropSource.hpp"
 #include "f-templa.hpp"
 #include "resource.h"
 
@@ -31,6 +32,11 @@ CDropTarget::~CDropTarget()
 
 void CDropTarget::UpdateEffect(DWORD *pdwEffect, DWORD grfKeyState)
 {
+    if (g_pDropSource && g_pDropSource->IsDragging())
+    {
+        *pdwEffect = DROPEFFECT_NONE;
+        return;
+    }
     *pdwEffect = DROPEFFECT_COPY;
 }
 

@@ -23,3 +23,5 @@ protected:
 
     void UpdateEffect(DWORD *pdwEffect, DWORD grfKeyState);
 };
+
+extern CDropTarget* g_pDropTarget;

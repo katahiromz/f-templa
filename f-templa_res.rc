@@ -145,7 +145,7 @@ FONT 9, "MS UI Gothic"
 STRINGTABLE
 {
     IDS_APPNAME, "フォルダでテンプレート"
-    IDS_APPVERSION, "フォルダでテンプレート Ver. 0.8 by 片山博文MZ"
+    IDS_APPVERSION, "フォルダでテンプレート Ver.1.0 by 片山博文MZ"
     IDS_SELECTITEM, "説明内容をお読みになり、項目を選択して下さい。"
     IDS_TYPESUBST, "置き換え項目を入力してファイルを任意の場所にドロップして下さい。"
     IDS_TODAY, "{{今日}}"

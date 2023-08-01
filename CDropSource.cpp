@@ -56,3 +56,20 @@ STDMETHODIMP CDropSource::GiveFeedback(DWORD dwEffect)
 {
     return DRAGDROP_S_USEDEFAULTCURSORS;
 }
+
+static LONG s_nDragging = 0;
+
+void CDropSource::BeginDrag()
+{
+    ++s_nDragging;
+}
+
+void CDropSource::EndDrag()
+{
+    --s_nDragging;
+}
+
+BOOL CDropSource::IsDragging() const
+{
+    return (s_nDragging > 0);
+}

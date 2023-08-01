@@ -13,6 +13,12 @@ public:
     STDMETHODIMP QueryContinueDrag(BOOL fEscapePressed, DWORD grfKeyState) override;
     STDMETHODIMP GiveFeedback(DWORD dwEffect) override;
 
+    void BeginDrag();
+    void EndDrag();
+    BOOL IsDragging() const;
+
 protected:
     LONG m_cRef;
 };
+
+extern CDropSource* g_pDropSource;

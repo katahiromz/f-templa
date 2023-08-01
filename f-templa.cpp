@@ -1388,14 +1388,20 @@ static void OnBeginDrag(HWND hwnd, NM_LISTVIEW* pListView)
     for (INT i = 0; i < cSelected; i++)
         ppidlChild[i] = ILFindLastID(ppidlAbsolute[i]);
 
+    g_pDropSource->BeginDrag();
+    ::DragAcceptFiles(hwnd, FALSE);
+
     IDataObject *pDataObject = NULL;
     pShellFolder->GetUIObjectOf(NULL, cSelected, (LPCITEMIDLIST*)ppidlChild, IID_IDataObject, NULL,
                                 (void **)&pDataObject);
     if (pDataObject)
     {
-        DWORD dwEffect = DROPEFFECT_COPY;
+        DWORD dwEffect = DROPEFFECT_NONE;
         DoDragDrop(pDataObject, g_pDropSource, DROPEFFECT_COPY, &dwEffect);
     }
+
+    g_pDropSource->EndDrag();
+    ::DragAcceptFiles(hwnd, TRUE);
 
     for (INT i = 0; i < cSelected; ++i)
         CoTaskMemFree(ppidlAbsolute[i]);
