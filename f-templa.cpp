@@ -468,8 +468,7 @@ static void UpdateValue(const string_t& first, string_t& second)
     if (first == doLoadStr(IDS_WEEKDAY))
     {
         assert(st.wDayOfWeek < 7);
-        second.clear();
-        second += doLoadStr(IDS_WEEKDAYS)[st.wDayOfWeek];
+        second = doLoadStr(IDS_WEEKDAYS)[st.wDayOfWeek];
         return;
     }
 }
