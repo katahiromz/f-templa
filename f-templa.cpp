@@ -450,6 +450,8 @@ static void Dialog2_RefreshSubst(HWND hwnd, mapping_t& mapping)
     }
 }
 
+static void Dialog2_InitSubst(HWND hwndDlg, INT iItem);
+
 static void Dialog2_OnPreset(HWND hwnd)
 {
     HWND hwndButton = GetDlgItem(hwnd, IDC_DARROW_PRESET);
@@ -508,72 +510,53 @@ static void Dialog2_OnPreset(HWND hwnd)
     INT iChoice = ::TrackPopupMenu(hMenu, TPM_RETURNCMD | TPM_LEFTALIGN | TPM_LEFTBUTTON,
                                    rc.right, rc.top, 0, hwnd, &rc);
     ::DestroyMenu(hMenu);
-    if (iChoice == 0)
+
+    switch (iChoice)
+    {
+    case 0:
         return;
 
-    if (iChoice >= c_section_first)
-    {
-        auto& name = section_names[iChoice - c_section_first];
-        auto& section = fdt_file.name2section[name];
-        for (auto& item : section.items)
+    case ID_SAVEPRESET:
         {
-            for (INT id = IDC_FROM_00; id < IDC_FROM_00 + MAX_REPLACEITEMS; ++id)
+            TCHAR name[128];
+            const INT c_max = 100;
+            INT iSection = 0;
+            for (; iSection < c_max; ++iSection)
             {
-                TCHAR szFrom[128];
-                GetDlgItemText(hwnd, id, szFrom, _countof(szFrom));
-                StrTrim(szFrom, TEXT(" \t\r\n\x3000"));
-
-                if (item.first == szFrom)
+                bool found = false;
+                StringCchPrintf(name, _countof(name), doLoadStr(IDS_SECTIONAME), iSection + 1);
+                for (auto& pair : fdt_file.name2section)
                 {
-                    SetDlgItemText(hwnd, IDC_TO_00 + (id - IDC_FROM_00), item.second.c_str());
+                    if (pair.first != name)
+                        continue;
+
+                    found = true;
                     break;
                 }
-            }
-        }
-        return;
-    }
 
-    if (iChoice == ID_SAVEPRESET)
-    {
-        TCHAR name[128];
-        const INT c_max = 100;
-        INT iSection = 0;
-        for (; iSection < c_max; ++iSection)
-        {
-            bool found = false;
-            StringCchPrintf(name, _countof(name), doLoadStr(IDS_SECTIONAME), iSection + 1);
-            for (auto& pair : fdt_file.name2section)
-            {
-                if (pair.first != name)
-                    continue;
-
-                found = true;
-                break;
+                if (!found)
+                    break;
             }
 
-            if (!found)
-                break;
-        }
-
-        if (iSection != c_max)
-        {
-            string_t section_name = name;
-            if (InputBox(hwnd, section_name, MAKEINTRESOURCE(IDS_DONAME), NULL, InputBoxCallback))
+            if (iSection != c_max)
             {
-                auto& section = fdt_file.name2section[section_name];
-                mapping_t mapping = DoGetMapping();
-                for (auto& pair : mapping)
+                string_t section_name = name;
+                if (InputBox(hwnd, section_name, MAKEINTRESOURCE(IDS_DONAME), NULL, InputBoxCallback))
                 {
-                    section.assign(pair.first, pair.second);
-                }
+                    auto& section = fdt_file.name2section[section_name];
+                    mapping_t mapping = DoGetMapping();
+                    for (auto& pair : mapping)
+                    {
+                        section.assign(pair.first, pair.second);
+                    }
 
-                fdt_file.save(path.c_str());
+                    fdt_file.save(path.c_str());
+                }
             }
         }
-    }
+        break;
 
-    if (iChoice == ID_EDITPRESET)
-    {
+    case ID_EDITPRESET:
         if (DialogBoxParam(GetModuleHandle(NULL), MAKEINTRESOURCE(IDD_PRESET),
                            hwnd, PresetDialogProc, (LPARAM)&section_names) == IDOK)
         {
@@ -583,38 +566,48 @@ static void Dialog2_OnPreset(HWND hwnd)
             }
             fdt_file.save(path.c_str());
         }
-    }
+        break;
 
-    if (iChoice == ID_RESET)
-    {
+    case ID_RESET:
         ::DeleteFile(path.c_str());
+        Dialog2_InitSubst(hwnd, iItem);
+        break;
 
-        mapping_t mapping;
-        if (PathIsDirectory(szPath))
-            Dialog2_InitSubstDir(hwnd, szPath, mapping);
-        else
-            Dialog2_InitSubstFile(hwnd, szPath, mapping);
-
-        for (auto& pair : mapping)
+    case ID_UPDATEVALUE:
         {
-            UpdateValue(pair.first, pair.second);
+            mapping_t mapping = DoGetMapping();
+
+            for (auto& pair : mapping)
+            {
+                UpdateValue(pair.first, pair.second);
+            }
+
+            Dialog2_RefreshSubst(hwnd, mapping);
         }
+        break;
 
-        Dialog2_RefreshSubst(hwnd, mapping);
-
-        g_history.clear();
-    }
-
-    if (iChoice == ID_UPDATEVALUE)
-    {
-        mapping_t mapping = DoGetMapping();
-
-        for (auto& pair : mapping)
+    default:
+        if (iChoice >= c_section_first)
         {
-            UpdateValue(pair.first, pair.second);
-        }
+            auto& name = section_names[iChoice - c_section_first];
+            auto& section = fdt_file.name2section[name];
+            for (auto& item : section.items)
+            {
+                for (INT id = IDC_FROM_00; id < IDC_FROM_00 + MAX_REPLACEITEMS; ++id)
+                {
+                    TCHAR szFrom[128];
+                    GetDlgItemText(hwnd, id, szFrom, _countof(szFrom));
+                    StrTrim(szFrom, TEXT(" \t\r\n\x3000"));
 
-        Dialog2_RefreshSubst(hwnd, mapping);
+                    if (item.first == szFrom)
+                    {
+                        SetDlgItemText(hwnd, IDC_TO_00 + (id - IDC_FROM_00), item.second.c_str());
+                        break;
+                    }
+                }
+            }
+        }
+        break;
     }
 }
 
