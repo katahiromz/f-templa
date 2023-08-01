@@ -361,7 +361,7 @@ static void UpdateValue(const string_t& first, string_t& second)
             st.wYear,
             st.wMonth,
             st.wDay);
-        second += szText;
+        second = szText;
         return;
     }
     if (first == doLoadStr(IDS_TODAY))
@@ -382,7 +382,7 @@ static void UpdateValue(const string_t& first, string_t& second)
             st.wHour,
             st.wMinute,
             st.wSecond);
-        second += szText;
+        second = szText;
         return;
     }
     if (first == doLoadStr(IDS_NOW))
@@ -406,7 +406,7 @@ static void UpdateValue(const string_t& first, string_t& second)
             st.wHour,
             st.wMinute,
             st.wSecond);
-        second += szText;
+        second = szText;
         return;
     }
     if (first == doLoadStr(IDS_TIMESTAMP))
