@@ -732,6 +732,7 @@ static void Dialog2_OnDownArrow(HWND hwnd, INT id)
         {
             std::pair<string_t, string_t> pair;
             pair.first = szKey;
+            pair.second = szValue;
             UpdateValue(pair.first, pair.second);
 
             HWND hwndEdit = ::GetDlgItem(hwnd, nEditToID);
