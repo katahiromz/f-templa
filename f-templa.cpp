@@ -16,7 +16,7 @@
 #include "InputBox.hpp"
 #include "resource.h"
 
-#define CLASSNAME TEXT("FolderDeTemple")    // ウィンドウクラス名。
+#define CLASSNAME TEXT("FolderDeTemplate")  // ウィンドウクラス名。
 #define WM_SHELLCHANGE (WM_USER + 100)      // シェル通知を受け取るメッセージ。
 #define MAX_REPLACEITEMS 16                 // 置き換え項目の最大個数。
 #define IDW_LISTVIEW 1
@@ -63,7 +63,7 @@ BOOL LoadSettings(void)
 
     HKEY hKey;
     LONG error = RegOpenKeyEx(HKEY_CURRENT_USER,
-                              TEXT("Software\\Katayama Hirofumi MZ\\FolderDeTemple"),
+                              TEXT("Software\\Katayama Hirofumi MZ\\FolderDeTemplate"),
                               0, KEY_READ, &hKey);
     if (error)
         return FALSE;
@@ -106,7 +106,7 @@ BOOL SaveSettings(void)
 
     HKEY hAppKey;
     error = RegCreateKeyEx(hCompanyKey,
-                           TEXT("FolderDeTemple"),
+                           TEXT("FolderDeTemplate"),
                            0, NULL, 0, KEY_WRITE, NULL, &hAppKey, NULL);
     if (error)
     {
