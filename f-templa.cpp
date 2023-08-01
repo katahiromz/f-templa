@@ -1320,6 +1320,8 @@ BOOL Dialog2_FindSubst(HWND hwndDlg, const string_t& str, mapping_t& mapping)
 // ダイアログ2において置き換え項目を初期化する（通常ファイルの場合）。
 BOOL Dialog2_InitSubstFile(HWND hwndDlg, LPCTSTR pszPath, mapping_t& mapping)
 {
+    Dialog2_FindSubst(hwndDlg, PathFindFileNameW(pszPath), mapping);
+
     TEMPLA_FILE file;
     if (!file.load(pszPath))
         return TRUE;
@@ -1332,9 +1334,7 @@ BOOL Dialog2_InitSubstFile(HWND hwndDlg, LPCTSTR pszPath, mapping_t& mapping)
 // ダイアログ2において置き換え項目を初期化する（ディレクトリの場合）。
 BOOL Dialog2_InitSubstDir(HWND hwndDlg, LPCTSTR pszPath, mapping_t& mapping)
 {
-    string_t str = PathFindFileName(pszPath);
-
-    Dialog2_FindSubst(hwndDlg, str, mapping);
+    Dialog2_FindSubst(hwndDlg, PathFindFileName(pszPath), mapping);
 
     TCHAR szSpec[MAX_PATH];
     StringCchCopy(szSpec, _countof(szSpec), pszPath);
@@ -1496,6 +1496,7 @@ BOOL DoTempla(HWND hwnd, LPTSTR pszPath, INT iItem)
     // パスファイル名を再構築する。
     StringCchCopy(pszPath, MAX_PATH, temp_dir);
     PathAppend(pszPath, filename.c_str());
+
     return TRUE;
 }
 
