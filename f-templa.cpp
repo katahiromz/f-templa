@@ -351,6 +351,7 @@ PresetDialogProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
     return 0;
 }
 
+// 値の更新。「{{タグ}}」に対応する値を取得する。
 static void UpdateValue(const string_t& first, string_t& second)
 {
     SYSTEMTIME st;
@@ -492,6 +493,7 @@ static void UpdateValue(const string_t& first, string_t& second)
     }
 }
 
+// 置き換え項目のUIを更新する。
 static void Dialog2_RefreshSubst(HWND hwnd, mapping_t& mapping)
 {
     ::SendMessage(hwnd, WM_COMMAND, ID_REFRESH_SUBST, 0);
@@ -509,6 +511,8 @@ static void Dialog2_RefreshSubst(HWND hwnd, mapping_t& mapping)
 
 static void Dialog2_InitSubst(HWND hwndDlg, INT iItem);
 
+// ダイアログ2において一番上の下矢印ボタンが押された。
+// メニューを表示し、処理を行う。
 static void Dialog2_OnPreset(HWND hwnd)
 {
     HWND hwndButton = GetDlgItem(hwnd, IDC_DARROW_PRESET);
@@ -668,6 +672,7 @@ static void Dialog2_OnPreset(HWND hwnd)
     }
 }
 
+// ダイアログ2において、下向き矢印ボタンがクリックされた。
 static void Dialog2_OnDownArrow(HWND hwnd, INT id)
 {
     INT index = id - IDC_DARROW_00;
@@ -819,6 +824,7 @@ static void Dialog2_OnDownArrow(HWND hwnd, INT id)
     }
 }
 
+// WM_COMMAND - ダイアログ2のコマンド処理。
 static void Dialog2_OnCommand(HWND hwnd, int id, HWND hwndCtl, UINT codeNotify)
 {
     switch (id)
@@ -855,11 +861,13 @@ static void Dialog2_OnCommand(HWND hwnd, int id, HWND hwndCtl, UINT codeNotify)
     }
 }
 
+// WM_VSCROLL - ダイアログ2で縦スクロールされた。
 static void Dialog2_OnVScroll(HWND hwnd, HWND hwndCtl, UINT code, int pos)
 {
     ScrollView_OnVScroll(&g_Dialog2ScrollView, hwndCtl, code, pos);
 }
 
+// WM_MOUSEWHEEL - ダイアログ2でマウスホイールが回転した。
 static void Dialog2_OnMouseWheel(HWND hwnd, int xPos, int yPos, int zDelta, UINT fwKeys)
 {
     if (zDelta > 0)
@@ -874,11 +882,13 @@ static void Dialog2_OnMouseWheel(HWND hwnd, int xPos, int yPos, int zDelta, UINT
     }
 }
 
+// WM_SIZE - ダイアログ2のサイズ変更。
 void Dialog2_OnSize(HWND hwnd, UINT state, int cx, int cy)
 {
     ScrollView_OnSize(&g_Dialog2ScrollView, state, cx, cy);
 }
 
+// ダイアログ2のダイアログプロシージャ。
 static INT_PTR CALLBACK
 Dialog2Proc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
@@ -893,6 +903,7 @@ Dialog2Proc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
     return 0;
 }
 
+// WM_CREATE - メインウィンドウの作成。
 static BOOL OnCreate(HWND hwnd, LPCREATESTRUCT lpCreateStruct)
 {
     g_hWnd = hwnd;
@@ -971,11 +982,13 @@ static BOOL OnCreate(HWND hwnd, LPCREATESTRUCT lpCreateStruct)
     return TRUE;
 }
 
+// WM_ACTIVATE - メインウィンドウがアクティブになった。
 static void OnActivate(HWND hwnd, UINT state, HWND hwndActDeact, BOOL fMinimized)
 {
     ::SetFocus(g_hListView);
 }
 
+// WM_SIZE - メインウィンドウのサイズが変更された。
 static void OnSize(HWND hwnd, UINT state, int cx, int cy)
 {
     RECT rc;
@@ -1002,6 +1015,7 @@ static void OnSize(HWND hwnd, UINT state, int cx, int cy)
     g_sizWnd.cy = rc.bottom - rc.top;
 }
 
+// コンテキストメニューの処理を実行する。
 HRESULT ExecuteContextCommand(HWND hwnd, IContextMenu *pContextMenu, UINT nCmd)
 {
     CMINVOKECOMMANDINFO info = { sizeof(info) };
@@ -1016,6 +1030,7 @@ HRESULT ExecuteContextCommand(HWND hwnd, IContextMenu *pContextMenu, UINT nCmd)
     return pContextMenu->InvokeCommand(&info);
 }
 
+// コンテキストメニューを表示し、選択した項目に応じてアクションを行う。
 BOOL ShowContextMenu(HWND hwnd, INT iItem, INT xPos, INT yPos, UINT uFlags = CMF_NORMAL)
 {
     HRESULT hr;
@@ -1105,6 +1120,7 @@ Finish:
     return TRUE;
 }
 
+// WM_CONTEXTMENU - コンテキストメニューを要求する。
 static void OnContextMenu(HWND hwnd, HWND hwndContext, UINT xPos, UINT yPos)
 {
     INT iItem = ListView_GetNextItem(g_hListView, -1, LVNI_SELECTED);
@@ -1127,6 +1143,7 @@ static void OnContextMenu(HWND hwnd, HWND hwndContext, UINT xPos, UINT yPos)
     ShowContextMenu(hwnd, iItem, xPos, yPos, CMF_EXPLORE | CMF_NODEFAULT);
 }
 
+// 一時ディレクトリを削除する。
 static void DeleteTempDir(HWND hwnd)
 {
     if (g_temp_dir[0])
@@ -1138,6 +1155,7 @@ static void DeleteTempDir(HWND hwnd)
     }
 }
 
+// FDTファイルを保存する。
 bool SaveFdtFile(LPCTSTR pszBasePath, mapping_t& mapping)
 {
     string_t path = pszBasePath;
@@ -1165,6 +1183,7 @@ bool SaveFdtFile(LPCTSTR pszBasePath, mapping_t& mapping)
     return fdt_file.save(path.c_str());
 }
 
+// リストビューの選択が解除された。
 static void OnDeSelectItem(HWND hwnd, INT iItem)
 {
     TCHAR szItem[MAX_PATH], szPath[MAX_PATH];
@@ -1176,6 +1195,7 @@ static void OnDeSelectItem(HWND hwnd, INT iItem)
     SaveFdtFile(szPath, mapping);
 }
 
+// WM_DESTROY - メインウィンドウの破棄。
 static void OnDestroy(HWND hwnd)
 {
     if (g_iDialog == 1 && s_iItemOld != -1)
@@ -1221,6 +1241,7 @@ static void OnDestroy(HWND hwnd)
     PostQuitMessage(0);
 }
 
+// テキストの中から{{タグ}}を探して、写像に追加する。
 BOOL Dialog2_FindSubst(HWND hwndDlg, const string_t& str, mapping_t& mapping)
 {
     size_t ich0 = 0;
@@ -1244,6 +1265,7 @@ BOOL Dialog2_FindSubst(HWND hwndDlg, const string_t& str, mapping_t& mapping)
     return FALSE;
 }
 
+// ダイアログ2において置き換え項目を初期化する（通常ファイルの場合）。
 BOOL Dialog2_InitSubstFile(HWND hwndDlg, LPCTSTR pszPath, mapping_t& mapping)
 {
     TEMPLA_FILE file;
@@ -1255,6 +1277,7 @@ BOOL Dialog2_InitSubstFile(HWND hwndDlg, LPCTSTR pszPath, mapping_t& mapping)
     return Dialog2_FindSubst(hwndDlg, file.m_string, mapping);
 }
 
+// ダイアログ2において置き換え項目を初期化する（ディレクトリの場合）。
 BOOL Dialog2_InitSubstDir(HWND hwndDlg, LPCTSTR pszPath, mapping_t& mapping)
 {
     string_t str = PathFindFileName(pszPath);
@@ -1296,6 +1319,7 @@ BOOL Dialog2_InitSubstDir(HWND hwndDlg, LPCTSTR pszPath, mapping_t& mapping)
     return TRUE;
 }
 
+// FDTファイルを読み込む。
 static bool LoadFdtFile(LPCTSTR pszBasePath, mapping_t& mapping)
 {
     g_history.clear();
@@ -1333,6 +1357,7 @@ static bool LoadFdtFile(LPCTSTR pszBasePath, mapping_t& mapping)
     return true;
 }
 
+// 置き換え項目を初期化する。
 static void Dialog2_InitSubst(HWND hwndDlg, INT iItem)
 {
     TCHAR szItem[MAX_PATH], szPath[MAX_PATH];
@@ -1367,6 +1392,7 @@ static void Dialog2_InitSubst(HWND hwndDlg, INT iItem)
     SaveFdtFile(szPath, mapping);
 }
 
+// テンプレートからの生成。
 BOOL DoTempla(HWND hwnd, LPTSTR pszPath, INT iItem)
 {
     DeleteTempDir(hwnd);
@@ -1400,6 +1426,7 @@ BOOL DoTempla(HWND hwnd, LPTSTR pszPath, INT iItem)
     return TRUE;
 }
 
+// LVN_BEGINDRAG / LVN_BEGINRDRAG - ドラッグが開始された。
 static void OnBeginDrag(HWND hwnd, NM_LISTVIEW* pListView)
 {
     INT cSelected = ListView_GetSelectedCount(g_hListView);
@@ -1461,6 +1488,7 @@ static void OnBeginDrag(HWND hwnd, NM_LISTVIEW* pListView)
     CoTaskMemFree(ppidlChild);
 }
 
+// VK_DELETE - リストビューでDelキーが押された。
 static void OnListViewDeleteKey(HWND hwnd, INT iItem)
 {
     TCHAR szPath[MAX_PATH], szItem[MAX_PATH];
@@ -1485,6 +1513,7 @@ static void OnListViewDeleteKey(HWND hwnd, INT iItem)
     }
 }
 
+// LVN_KEYDOWN - リストビューでキーが押された。
 static LRESULT OnListViewKeyDown(HWND hwnd, LV_KEYDOWN *pKeyDown)
 {
     INT iItem = ListView_GetNextItem(g_hListView, -1, LVNI_SELECTED);
@@ -1504,6 +1533,7 @@ static LRESULT OnListViewKeyDown(HWND hwnd, LV_KEYDOWN *pKeyDown)
     return 0;
 }
 
+// LVN_ITEMCHANGED - リストビューの項目が変更された。
 static LRESULT OnListViewItemChanged(HWND hwnd, NM_LISTVIEW* pListView)
 {
     INT iItem = ListView_GetNextItem(g_hListView, -1, LVNI_SELECTED);
@@ -1533,6 +1563,7 @@ static LRESULT OnListViewItemChanged(HWND hwnd, NM_LISTVIEW* pListView)
     return 0;
 }
 
+// WM_NOTIFY - メインウィンドウへの通知メッセージ。
 static LRESULT OnNotify(HWND hwnd, int idFrom, LPNMHDR pnmhdr)
 {
     if (idFrom != 1)
@@ -1563,6 +1594,7 @@ static LRESULT OnNotify(HWND hwnd, int idFrom, LPNMHDR pnmhdr)
     return 0;
 }
 
+// シェル変更通知が届いた。
 static LRESULT OnShellChange(HWND hwnd, WPARAM wParam, LPARAM lParam)
 {
     LPITEMIDLIST *ppidlAbsolute;
@@ -1625,6 +1657,7 @@ static LRESULT OnShellChange(HWND hwnd, WPARAM wParam, LPARAM lParam)
     return 0;
 }
 
+// WM_DROPFILES - メインウィンドウにファイルがドロップされた。
 void OnDropFiles(HWND hwnd, HDROP hdrop)
 {
     UINT cFiles = DragQueryFile(hdrop, 0xFFFFFFFF, NULL, 0);
@@ -1648,6 +1681,7 @@ void OnDropFiles(HWND hwnd, HDROP hdrop)
     DragFinish(hdrop);
 }
 
+// WM_MOVE - メインウィンドウの移動。
 void OnMove(HWND hwnd, int x, int y)
 {
     if (IsIconic(hwnd) || IsZoomed(hwnd))
@@ -1680,16 +1714,20 @@ WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
     return 0;
 }
 
+// Windowsアプリのメイン関数。
 INT WINAPI
 WinMain(HINSTANCE   hInstance,
         HINSTANCE   hPrevInstance,
         LPSTR       lpCmdLine,
         INT         nCmdShow)
 {
+    // コモンコントロールを初期化。
     InitCommonControls();
 
+    // 設定の読み込み。
     LoadSettings();
 
+    // ウィンドウクラスの登録。
     WNDCLASSEX wcx = { sizeof(wcx) };
     wcx.style = CS_HREDRAW | CS_VREDRAW | CS_DBLCLKS;
     wcx.lpfnWndProc = WindowProc;
@@ -1703,10 +1741,12 @@ WinMain(HINSTANCE   hInstance,
         GetSystemMetrics(SM_CXSMICON), GetSystemMetrics(SM_CYSMICON), 0);
     if (!::RegisterClassEx(&wcx))
     {
+        // 失敗。
         MessageBoxA(NULL, "RegisterClassEx failed", NULL, MB_ICONERROR);
         return 1;
     }
 
+    // メインウィンドウの作成。
     DWORD style = WS_OVERLAPPEDWINDOW;
     DWORD exstyle = 0;
     HWND hwnd = ::CreateWindowEx(exstyle, CLASSNAME, doLoadStr(IDS_APPVERSION), style,
@@ -1714,13 +1754,16 @@ WinMain(HINSTANCE   hInstance,
                                  NULL, NULL, hInstance, NULL);
     if (!hwnd)
     {
+        // 失敗。
         MessageBoxA(NULL, "CreateWindowEx failed", NULL, MB_ICONERROR);
         return 2;
     }
 
+    // メインウィンドウの表示。
     ShowWindow(hwnd, SW_SHOWNORMAL);
     UpdateWindow(hwnd);
 
+    // メッセージループ。
     MSG msg;
     while (GetMessage(&msg, NULL, 0, 0))
     {
@@ -1740,6 +1783,7 @@ WinMain(HINSTANCE   hInstance,
         DispatchMessage(&msg);
     }
 
+    // 設定の保存。
     SaveSettings();
 
     return INT(msg.wParam);
