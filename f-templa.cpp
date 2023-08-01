@@ -1493,6 +1493,9 @@ BOOL DoTempla(HWND hwnd, LPTSTR pszPath, INT iItem)
         str_replace(filename, pair.first, pair.second);
     }
 
+    // 無効なファイル名を置き換える。
+    templa_validate_filename(filename);
+
     // パスファイル名を再構築する。
     StringCchCopy(pszPath, MAX_PATH, temp_dir);
     PathAppend(pszPath, filename.c_str());
