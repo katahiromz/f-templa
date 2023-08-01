@@ -34,4 +34,9 @@ add_executable(f-templa WIN32
     f-templa_res.rc)
 target_link_libraries(f-templa comctl32 shlwapi libtempla)
 
+# UTF-8
+if(MSVC)
+    target_compile_options(f-templa PRIVATE /source-charset:utf-8 /execution-charset:utf-8)
+endif()
+
 ##############################################################################
