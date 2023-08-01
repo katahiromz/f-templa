@@ -831,14 +831,17 @@ static void Dialog2_OnCommand(HWND hwnd, int id, HWND hwndCtl, UINT codeNotify)
     switch (id)
     {
     case ID_REFRESH_SUBST:
+        // 置き換え項目のテキストボックスをクリアする。
         for (UINT id = IDC_FROM_00; id <= IDC_FROM_15; ++id)
             ::SetDlgItemText(hwnd, id, NULL);
         for (UINT id = IDC_TO_00; id <= IDC_TO_15; ++id)
             ::SetDlgItemText(hwnd, id, NULL);
         break;
+
     case IDC_DARROW_PRESET:
         Dialog2_OnPreset(hwnd);
         break;
+
     default:
         if (IDC_RARROW_00 <= id && id < IDC_RARROW_00 + MAX_REPLACEITEMS)
         {
@@ -907,17 +910,22 @@ Dialog2Proc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 // WM_CREATE - メインウィンドウの作成。
 static BOOL OnCreate(HWND hwnd, LPCREATESTRUCT lpCreateStruct)
 {
+    // ウィンドウハンドルを覚えておく。
     g_hWnd = hwnd;
 
+    // ファイルドロップを許可する。
     ::DragAcceptFiles(hwnd, TRUE);
 
+    // 位置を覚えておく。
     RECT rc;
     GetWindowRect(hwnd, &rc);
     g_ptWnd.x = rc.left;
     g_ptWnd.y = rc.top;
 
+    // OLEの初期化。
     ::OleInitialize(NULL);
 
+    // リストビューを作成。
     DWORD style = WS_CHILD | WS_VISIBLE | LVS_ICON |
         LVS_AUTOARRANGE | LVS_SHOWSELALWAYS | LVS_SINGLESEL |
         WS_BORDER | WS_VSCROLL | WS_HSCROLL;
@@ -927,12 +935,15 @@ static BOOL OnCreate(HWND hwnd, LPCREATESTRUCT lpCreateStruct)
     if (g_hListView == NULL)
         return FALSE;
 
+    // イメージリストを取得。
     SHFILEINFO info;
     g_hImageList = (HIMAGELIST)SHGetFileInfo(TEXT("C:\\"), 0, &info, sizeof(info), SHGFI_SYSICONINDEX | SHGFI_LARGEICON);
     if (g_hImageList == NULL)
         return FALSE;
+    // リストビューにイメージリストをセットする。
     ListView_SetImageList(g_hListView, g_hImageList, LVSIL_NORMAL);
 
+    // テンプレートフォルダのパスファイル名を取得する。
     TCHAR szPath[MAX_PATH];
     GetModuleFileName(NULL, szPath, _countof(szPath));
     PathRemoveFileSpec(szPath);
@@ -948,8 +959,10 @@ static BOOL OnCreate(HWND hwnd, LPCREATESTRUCT lpCreateStruct)
         }
     }
 
+    // パスファイル名を使用してリストビューを初期化する。
     InitListView(g_hListView, g_hImageList, szPath);
 
+    // ダイアログ群を作成する。
     static const UINT ids[] = { IDD_TOP, IDD_SUBST };
     DLGPROC procs[] = { Dialog1Proc, Dialog2Proc };
     for (UINT i = 0; i < _countof(g_hwndDialogs); ++i)
@@ -960,11 +973,13 @@ static BOOL OnCreate(HWND hwnd, LPCREATESTRUCT lpCreateStruct)
     }
     ::ShowWindow(g_hwndDialogs[g_iDialog], SW_SHOWNOACTIVATE);
 
+    // ステータスバーを作成する。
     style = WS_CHILD | WS_VISIBLE | SBARS_SIZEGRIP;
     g_hStatusBar = ::CreateStatusWindow(style, doLoadStr(IDS_SELECTITEM), hwnd, 2);
     if (g_hStatusBar == NULL)
         return FALSE;
 
+    // シェル変更通知を受け取るようにする。
     LPITEMIDLIST pidlDesktop;
     SHGetSpecialFolderLocation(hwnd, CSIDL_DESKTOP, &pidlDesktop);
     SHChangeNotifyEntry  entry;
@@ -975,11 +990,14 @@ static BOOL OnCreate(HWND hwnd, LPCREATESTRUCT lpCreateStruct)
     g_nNotifyID = SHChangeNotifyRegister(hwnd, SHCNRF_ShellLevel | SHCNRF_NewDelivery,
                                          nEvents, WM_SHELLCHANGE, 1, &entry);
 
+    // D&Dを登録する。
     g_pDropTarget = new CDropTarget(hwnd);
     ::RegisterDragDrop(hwnd, g_pDropTarget);
     g_pDropSource = new CDropSource();
 
+    // WM_SIZEメッセージの処理により再配置を行う。
     ::PostMessage(hwnd, WM_SIZE, 0, 0);
+
     return TRUE;
 }
 
@@ -1127,14 +1145,15 @@ Finish:
 static void OnContextMenu(HWND hwnd, HWND hwndContext, UINT xPos, UINT yPos)
 {
     INT iItem = ListView_GetNextItem(g_hListView, -1, LVNI_SELECTED);
-    if (iItem == -1)
+    if (iItem == -1) // 選択項目がなければ背景の右クリック。
     {
         ShowContextMenu(hwnd, iItem, xPos, yPos, CMF_NODEFAULT | CMF_NOVERBS);
         return;
     }
 
-    if (xPos == 0xFFFF && yPos == 0xFFFF)
+    if (xPos == 0xFFFF && yPos == 0xFFFF) // この場合はキーボードによるコンテキストメニュー。
     {
+        // 選択項目の中心の座標を使用する。
         RECT rc;
         ListView_GetItemRect(g_hListView, iItem, &rc, LVIR_ICON);
         POINT pt = { (rc.left + rc.right) / 2, (rc.top + rc.bottom) / 2 };
