@@ -1,3 +1,4 @@
+// f-templa.cpp --- 「フォルダでテンプレート」by 片山博文MZ.
 #include <windows.h>
 #include <windowsx.h>
 #include <commctrl.h>
@@ -15,29 +16,30 @@
 #include "InputBox.hpp"
 #include "resource.h"
 
-#define CLASSNAME TEXT("FolderDeTemple")
-#define WM_SHELLCHANGE (WM_USER + 100)
-#define MAX_REPLACEITEMS 16
+#define CLASSNAME TEXT("FolderDeTemple")    // ウィンドウクラス名。
+#define WM_SHELLCHANGE (WM_USER + 100)      // シェル通知を受け取るメッセージ。
+#define MAX_REPLACEITEMS 16                 // 置き換え項目の最大個数。
 
-HWND g_hWnd = NULL;
-HWND g_hListView = NULL;
-HIMAGELIST g_hImageList = NULL;
-INT g_iDialog = 0;
-HWND g_hwndDialogs[2] = { NULL };
-HWND g_hStatusBar = NULL;
-TCHAR g_root_dir[MAX_PATH] = TEXT("");
-TCHAR g_temp_dir[MAX_PATH + 1] = TEXT("");
-CDropTarget* g_pDropTarget = NULL;
-CDropSource* g_pDropSource = NULL;
-UINT g_nNotifyID = 0;
-SCROLLVIEW g_Dialog1ScrollView, g_Dialog2ScrollView;
-string_list_t g_ignore = { L"q", L"*.bin", L".git", L".svn", L".vs" };
-std::vector<std::pair<string_t, string_t>> g_history;
-POINT g_ptWnd;
-SIZE g_sizWnd;
+HWND g_hWnd = NULL; // メインウィンドウ。
+HWND g_hListView = NULL; // リストビューコントロール。
+HIMAGELIST g_hImageList = NULL; // イメージリスト。
+INT g_iDialog = 0; // 現在のダイアログのインデックス。
+HWND g_hwndDialogs[2] = { NULL }; // ダイアログ群。
+HWND g_hStatusBar = NULL; // ステータスバー。
+TCHAR g_root_dir[MAX_PATH] = TEXT(""); // テンプレートのルートディレクトリ。
+TCHAR g_temp_dir[MAX_PATH + 1] = TEXT(""); // 一時ファイルの保存先ディレクトリ。
+CDropTarget* g_pDropTarget = NULL; // ドロップターゲット。
+CDropSource* g_pDropSource = NULL; // ドロップソース。
+UINT g_nNotifyID = 0; // シェル通知ID。
+SCROLLVIEW g_Dialog1ScrollView, g_Dialog2ScrollView; // ダイアログ1とダイアログ2のスクロールビュー。
+string_list_t g_ignore = { L"q", L"*.bin", L".git", L".svn", L".vs" }; // 無視すべきフォルダ。
+std::vector<std::pair<string_t, string_t>> g_history; // キーと値の履歴。
+POINT g_ptWnd; // メインウィンドウの位置。
+SIZE g_sizWnd; // メインウィンドウのサイズ。
 
 static INT s_iItemOld = -1;
 
+// 文字列を読み込む。
 LPCTSTR doLoadStr(LPCTSTR text)
 {
     static TCHAR s_szText[1024] = TEXT("");
@@ -47,12 +49,12 @@ LPCTSTR doLoadStr(LPCTSTR text)
     LoadString(NULL, LOWORD(text), s_szText, _countof(s_szText));
     return s_szText;
 }
-
 LPCTSTR doLoadStr(UINT text)
 {
     return doLoadStr(MAKEINTRESOURCE(text));
 }
 
+// 設定をレジストリから読み込む。
 BOOL LoadSettings(void)
 {
     g_ptWnd = { CW_USEDEFAULT, CW_USEDEFAULT };
@@ -91,6 +93,7 @@ BOOL LoadSettings(void)
     return TRUE;
 }
 
+// 設定をレジストリから保存する。
 BOOL SaveSettings(void)
 {
     HKEY hCompanyKey;
@@ -133,6 +136,7 @@ BOOL SaveSettings(void)
     return TRUE;
 }
 
+// リストビューを初期化する。
 static void InitListView(HWND hListView, HIMAGELIST hImageList, LPCTSTR pszDir)
 {
     TCHAR spec[MAX_PATH];
@@ -175,26 +179,31 @@ static void InitListView(HWND hListView, HIMAGELIST hImageList, LPCTSTR pszDir)
     }
 }
 
+// WM_INITDIALOG - ダイアログ1の初期化。
 static BOOL Dialog1_OnInitDialog(HWND hwnd, HWND hwndFocus, LPARAM lParam)
 {
     ScrollView_Init(&g_Dialog1ScrollView, hwnd, SB_VERT);
     return TRUE;
 }
 
+// WM_COMMAND - ダイアログ1のコマンド処理。
 static void Dialog1_OnCommand(HWND hwnd, int id, HWND hwndCtl, UINT codeNotify)
 {
 }
 
+// WM_SIZE - ダイアログ1のサイズ変更。
 static void Dialog1_OnSize(HWND hwnd, UINT state, int cx, int cy)
 {
     ScrollView_OnSize(&g_Dialog1ScrollView, state, cx, cy);
 }
 
+// WM_VSCROLL - ダイアログ1の縦スクロール。
 static void Dialog1_OnVScroll(HWND hwnd, HWND hwndCtl, UINT code, int pos)
 {
     ScrollView_OnVScroll(&g_Dialog1ScrollView, hwndCtl, code, pos);
 }
 
+// WM_MOUSEWHEEL - ダイアログ1のマウスホイール回転。
 static void Dialog1_OnMouseWheel(HWND hwnd, int xPos, int yPos, int zDelta, UINT fwKeys)
 {
     if (zDelta > 0)
@@ -209,6 +218,7 @@ static void Dialog1_OnMouseWheel(HWND hwnd, int xPos, int yPos, int zDelta, UINT
     }
 }
 
+// ダイアログ1のダイアログプロシージャ。
 static INT_PTR CALLBACK
 Dialog1Proc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
@@ -223,12 +233,14 @@ Dialog1Proc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
     return 0;
 }
 
+// WM_INITDIALOG - ダイアログ2の初期化。
 static BOOL Dialog2_OnInitDialog(HWND hwnd, HWND hwndFocus, LPARAM lParam)
 {
     ScrollView_Init(&g_Dialog2ScrollView, hwnd, SB_VERT);
     return TRUE;
 }
 
+// ダイアログから写像を取得する。
 mapping_t DoGetMapping(void)
 {
     HWND hwndDlg = g_hwndDialogs[1];
@@ -251,14 +263,17 @@ mapping_t DoGetMapping(void)
     return mapping;
 }
 
+// 入力ボックスのコールバック関数。
 static BOOL CALLBACK InputBoxCallback(LPTSTR text)
 {
     StrTrim(text, TEXT(" \t\r\n\x3000"));
     return text[0] != 0 && text[0] != L':';
 }
 
+// 削除されたセクションをここに保存する。
 static string_list_t g_deleted_sections;
 
+// WM_INITDIALOG - プリセットのダイアログ初期化。
 static BOOL Preset_OnInitDialog(HWND hwnd, HWND hwndFocus, LPARAM lParam)
 {
     HWND hLst1 = GetDlgItem(hwnd, lst1);
@@ -274,6 +289,7 @@ static BOOL Preset_OnInitDialog(HWND hwnd, HWND hwndFocus, LPARAM lParam)
     return TRUE;
 }
 
+// psh1 - プリセットの削除。
 static void Preset_OnDelete(HWND hwnd)
 {
     HWND hLst1 = GetDlgItem(hwnd, lst1);
@@ -291,6 +307,7 @@ static void Preset_OnDelete(HWND hwnd)
     }
 }
 
+// psh2 - プリセットのすべて削除。
 static void Preset_OnDeleteAll(HWND hwnd)
 {
     HWND hLst1 = GetDlgItem(hwnd, lst1);
@@ -304,6 +321,7 @@ static void Preset_OnDeleteAll(HWND hwnd)
     }
 }
 
+// WM_COMMAND - プリセットのコマンド処理。
 static void Preset_OnCommand(HWND hwnd, int id, HWND hwndCtl, UINT codeNotify)
 {
     switch (id)
@@ -321,6 +339,7 @@ static void Preset_OnCommand(HWND hwnd, int id, HWND hwndCtl, UINT codeNotify)
     }
 }
 
+// プリセットのダイアログプロシージャ。
 static INT_PTR CALLBACK
 PresetDialogProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {

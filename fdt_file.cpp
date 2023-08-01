@@ -5,6 +5,7 @@
 #include "f-templa.hpp"
 #include "fdt_file.hpp"
 
+// 項目を追加する。すでに存在する場合は削除してから追加する。
 void FDT_FILE::SECTION::assign(const ITEM& item)
 {
 retry:
@@ -19,6 +20,7 @@ retry:
     items.push_back(item);
 }
 
+// 項目を削除する。
 void FDT_FILE::SECTION::erase(const string_t& key)
 {
 retry:
@@ -32,12 +34,14 @@ retry:
     }
 }
 
+// 項目を追加する。すでに存在する場合は削除してから追加する。
 void FDT_FILE::SECTION::assign(const string_t& key, const string_t& value)
 {
     erase(key);
     items.push_back(std::make_pair(key, value));
 }
 
+// FDTファイルを読み込む。
 bool FDT_FILE::load(LPCWSTR filename)
 {
     TEMPLA_FILE file;
@@ -74,6 +78,7 @@ bool FDT_FILE::load(LPCWSTR filename)
     return true;
 }
 
+// FDTファイルを保存する。
 bool FDT_FILE::save(LPCWSTR filename)
 {
     TEMPLA_FILE file;
