@@ -104,6 +104,12 @@
 #define IDS_DELETEKEYVALUE                  125
 #define IDS_RESET                           126
 #define IDS_UPDATEVALUE                     127
+#define IDS_THISMONTH                       128
+#define IDS_THISDAY                         129
+#define IDS_THISHOUR                        130
+#define IDS_THISMINUTE                      131
+#define IDS_THISSECOND                      132
+#define IDS_TIMESTAMP                       133
 
 #define ID_REFRESH_SUBST                    100
 #define ID_EDITPRESET                       101

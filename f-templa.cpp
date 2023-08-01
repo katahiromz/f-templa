@@ -334,10 +334,11 @@ PresetDialogProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
 static void UpdateValue(const string_t& first, string_t& second)
 {
+    SYSTEMTIME st;
+    ::GetLocalTime(&st);
+
     if (first == L"{{TODAY}}")
     {
-        SYSTEMTIME st;
-        ::GetLocalTime(&st);
         TCHAR szText[128];
         StringCchPrintf(szText, _countof(szText), TEXT("%04u-%02u-%02u"),
             st.wYear,
@@ -346,48 +347,8 @@ static void UpdateValue(const string_t& first, string_t& second)
         second += szText;
         return;
     }
-    if (first == L"{{NOW}}")
-    {
-        SYSTEMTIME st;
-        ::GetLocalTime(&st);
-        TCHAR szText[128];
-        StringCchPrintf(szText, _countof(szText), TEXT("%02u:%02u:%02u"),
-            st.wHour,
-            st.wMinute,
-            st.wSecond);
-        second += szText;
-        return;
-    }
-    if (first == L"{{THISYEAR}}")
-    {
-        SYSTEMTIME st;
-        ::GetLocalTime(&st);
-        second = std::to_wstring(st.wYear);
-        return;
-    }
-    if (first == L"{{USER}}")
-    {
-        TCHAR szUser[MAX_PATH];
-        DWORD cchUser = _countof(szUser);
-        ::GetUserName(szUser, &cchUser);
-        second = szUser;
-        return;
-    }
-    if (first == L"{{WEEKDAY}}")
-    {
-        SYSTEMTIME st;
-        ::GetLocalTime(&st);
-        static const LPCWSTR days[] =
-        {
-            L"Sun", L"Mon", L"Tue", L"Wed", L"Thu", L"Fri", L"Sat",
-        };
-        second = days[st.wDayOfWeek];
-        return;
-    }
     if (first == doLoadStr(IDS_TODAY))
     {
-        SYSTEMTIME st;
-        ::GetLocalTime(&st);
         second = std::to_wstring(st.wYear);
         second += doLoadStr(IDS_YEAR);
         second += std::to_wstring(st.wMonth);
@@ -396,10 +357,19 @@ static void UpdateValue(const string_t& first, string_t& second)
         second += doLoadStr(IDS_DAY);
         return;
     }
+
+    if (first == L"{{NOW}}")
+    {
+        TCHAR szText[128];
+        StringCchPrintf(szText, _countof(szText), TEXT("%02u:%02u:%02u"),
+            st.wHour,
+            st.wMinute,
+            st.wSecond);
+        second += szText;
+        return;
+    }
     if (first == doLoadStr(IDS_NOW))
     {
-        SYSTEMTIME st;
-        ::GetLocalTime(&st);
         second = std::to_wstring(st.wHour);
         second += doLoadStr(IDS_HOUR);
         second += std::to_wstring(st.wMinute);
@@ -408,15 +378,76 @@ static void UpdateValue(const string_t& first, string_t& second)
         second += doLoadStr(IDS_SECOND);
         return;
     }
-    if (first == doLoadStr(IDS_THISYEAR))
+
+    if (first == L"{{TIMESTAMP}}")
     {
-        SYSTEMTIME st;
-        ::GetLocalTime(&st);
-        second = std::to_wstring(st.wYear);
-        second += doLoadStr(IDS_YEAR);
+        TCHAR szText[128];
+        StringCchPrintf(szText, _countof(szText), TEXT("%04u-%02u-%02u %02u:%02u:%02u"),
+            st.wYear,
+            st.wMonth,
+            st.wDay,
+            st.wHour,
+            st.wMinute,
+            st.wSecond);
+        second += szText;
         return;
     }
-    if (first == doLoadStr(IDS_USERNAME) || first == doLoadStr(IDS_USERNAME2))
+    if (first == doLoadStr(IDS_TIMESTAMP))
+    {
+        second = std::to_wstring(st.wYear);
+        second += doLoadStr(IDS_YEAR);
+        second += std::to_wstring(st.wMonth);
+        second += doLoadStr(IDS_MONTH);
+        second += std::to_wstring(st.wDay);
+        second += doLoadStr(IDS_DAY);
+        second += std::to_wstring(st.wHour);
+        second += doLoadStr(IDS_HOUR);
+        second += std::to_wstring(st.wMinute);
+        second += doLoadStr(IDS_MINUTE);
+        second += std::to_wstring(st.wSecond);
+        second += doLoadStr(IDS_SECOND);
+        return;
+    }
+
+    if (first == L"{{YEAR}}" || first == doLoadStr(IDS_THISYEAR))
+    {
+        second = std::to_wstring(st.wYear);
+        return;
+    }
+
+    if (first == L"{{MONTH}}" || first == doLoadStr(IDS_THISMONTH))
+    {
+        second = std::to_wstring(st.wMonth);
+        return;
+    }
+
+    if (first == L"{{DAY}}" || first == doLoadStr(IDS_THISDAY))
+    {
+        second = std::to_wstring(st.wDay);
+        return;
+    }
+
+    if (first == L"{{HOUR}}" || first == doLoadStr(IDS_THISHOUR))
+    {
+        second = std::to_wstring(st.wHour);
+        return;
+    }
+
+    if (first == L"{{MINUTE}}" || first == doLoadStr(IDS_THISMINUTE))
+    {
+        second = std::to_wstring(st.wMinute);
+        return;
+    }
+
+    if (first == L"{{SECOND}}" || first == doLoadStr(IDS_THISSECOND))
+    {
+        second = std::to_wstring(st.wSecond);
+        return;
+    }
+
+    if (first == L"{{USER}}" ||
+        first == doLoadStr(IDS_USERNAME) ||
+        first == doLoadStr(IDS_USERNAME2))
     {
         TCHAR szUser[MAX_PATH];
         DWORD cchUser = _countof(szUser);
@@ -424,10 +455,18 @@ static void UpdateValue(const string_t& first, string_t& second)
         second = szUser;
         return;
     }
+
+    if (first == L"{{WEEKDAY}}")
+    {
+        static const LPCWSTR days[] =
+        {
+            L"Sun", L"Mon", L"Tue", L"Wed", L"Thu", L"Fri", L"Sat",
+        };
+        second = days[st.wDayOfWeek];
+        return;
+    }
     if (first == doLoadStr(IDS_WEEKDAY))
     {
-        SYSTEMTIME st;
-        ::GetLocalTime(&st);
         assert(st.wDayOfWeek < 7);
         second.clear();
         second += doLoadStr(IDS_WEEKDAYS)[st.wDayOfWeek];

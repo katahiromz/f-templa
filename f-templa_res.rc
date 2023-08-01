@@ -149,8 +149,8 @@ STRINGTABLE
     IDS_SELECTITEM, "説明内容をお読みになり、項目を選択して下さい。"
     IDS_TYPESUBST, "置き換え項目を入力してファイルを任意の場所にドロップして下さい。"
     IDS_TODAY, "{{今日}}"
-    IDS_NOW, "{{今}}"
-    IDS_THISYEAR, "{{今年}}"
+    IDS_NOW, "{{時刻}}"
+    IDS_THISYEAR, "{{年}}"
     IDS_USERNAME, "{{ユーザー名}}"
     IDS_USERNAME2, "{{ユーザ名}}"
     IDS_YEAR, "年"
@@ -172,6 +172,12 @@ STRINGTABLE
     IDS_DELETEKEYVALUE, "キーと値を削除"
     IDS_RESET, "リセット(&R)"
     IDS_UPDATEVALUE, "値を更新(&U)"
+    IDS_THISMONTH, "{{月}}"
+    IDS_THISDAY, "{{日}}"
+    IDS_THISHOUR, "{{時}}"
+    IDS_THISMINUTE, "{{分}}"
+    IDS_THISSECOND, "{{秒}}"
+    IDS_TIMESTAMP, "{{日時}}"
 }
 
 //////////////////////////////////////////////////////////////////////////////
