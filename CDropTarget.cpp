@@ -112,6 +112,8 @@ CDropTarget::DragLeave()
     return S_OK;
 }
 
+LPCTSTR doLoadStr(UINT text);
+
 STDMETHODIMP
 CDropTarget::Drop(IDataObject *pDataObj, DWORD grfKeyState, POINTL pt, DWORD *pdwEffect)
 {
@@ -138,8 +140,8 @@ CDropTarget::Drop(IDataObject *pDataObj, DWORD grfKeyState, POINTL pt, DWORD *pd
     if (m_bRight)
     {
         HMENU hMenu = CreatePopupMenu();
-        AppendMenu(hMenu, MF_STRING, 1, TEXT("Add Item"));
-        AppendMenu(hMenu, MF_STRING, 2, TEXT("Cancel"));
+        AppendMenu(hMenu, MF_STRING, 1, doLoadStr(IDS_ADDITEM2));
+        AppendMenu(hMenu, MF_STRING, 2, doLoadStr(IDS_CANCEL));
 
         SetForegroundWindow(m_hwnd);
         INT nID = TrackPopupMenu(hMenu, TPM_RETURNCMD | TPM_RIGHTBUTTON | TPM_LEFTBUTTON,
@@ -147,6 +149,7 @@ CDropTarget::Drop(IDataObject *pDataObj, DWORD grfKeyState, POINTL pt, DWORD *pd
         PostMessage(m_hwnd, WM_NULL, 0, 0);
         if (nID == 0 || nID == -1 || nID == 2)
         {
+            *pdwEffect = DROPEFFECT_NONE;
             return E_FAIL;
         }
     }

@@ -1562,7 +1562,7 @@ static void OnBeginDrag(HWND hwnd, NM_LISTVIEW* pListView)
     {
         // ドラッグを処理する。
         DWORD dwEffect = DROPEFFECT_NONE;
-        DoDragDrop(pDataObject, g_pDropSource, DROPEFFECT_COPY, &dwEffect);
+        ::DoDragDrop(pDataObject, g_pDropSource, DROPEFFECT_COPY, &dwEffect);
     }
 
     // ドラッグの終了。
@@ -1784,7 +1784,7 @@ static LRESULT OnShellChange(HWND hwnd, WPARAM wParam, LPARAM lParam)
 void OnDropFiles(HWND hwnd, HDROP hdrop)
 {
     // ドロップされたファイルの個数を取得する。
-    UINT cFiles = DragQueryFile(hdrop, 0xFFFFFFFF, NULL, 0);
+    UINT cFiles = ::DragQueryFile(hdrop, 0xFFFFFFFF, NULL, 0);
 
     // ドロップされた各ファイルについて。
     for (UINT iFile = 0; iFile < cFiles; ++iFile)
@@ -1812,7 +1812,7 @@ void OnDropFiles(HWND hwnd, HDROP hdrop)
     }
 
     // HDROPの破棄。
-    DragFinish(hdrop);
+    ::DragFinish(hdrop);
 }
 
 // WM_MOVE - メインウィンドウの移動。

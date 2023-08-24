@@ -110,6 +110,8 @@
 #define IDS_THISMINUTE                      131
 #define IDS_THISSECOND                      132
 #define IDS_TIMESTAMP                       133
+#define IDS_ADDITEM2                        134
+#define IDS_CANCEL                          135
 
 #define ID_REFRESH_SUBST                    100
 #define ID_EDITPRESET                       101
