@@ -7,6 +7,15 @@
 #include "f-templa.hpp"
 #include "resource.h"
 
+/* initialisation for FORMATETC */
+#define InitFormatEtc(fe, cf, med) do { \
+    (fe).cfFormat = cf; \
+    (fe).dwAspect = DVASPECT_CONTENT; \
+    (fe).ptd      = NULL; \
+    (fe).tymed    = med; \
+    (fe).lindex   = -1; \
+} while (0)
+
 inline LPBYTE byte_cast(LPIDA pIDA, UINT p)
 {
     return reinterpret_cast<LPBYTE>(pIDA) + pIDA->aoffset[p];
@@ -15,29 +24,25 @@ inline LPBYTE byte_cast(LPIDA pIDA, UINT p)
 CDropTarget::CDropTarget(HWND hwnd)
     : m_cRef(1)
     , m_hwnd(hwnd)
-    , m_pDropTargetHelper(NULL)
     , m_bRight(FALSE)
 {
-    ::CoCreateInstance(CLSID_DragDropHelper, NULL, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&m_pDropTargetHelper));
+    printf("CDropTarget::CDropTarget\n");
 }
 
 CDropTarget::~CDropTarget()
 {
-    if (m_pDropTargetHelper)
-    {
-        m_pDropTargetHelper->Release();
-        m_pDropTargetHelper = NULL;
-    }
+    printf("CDropTarget::~CDropTarget\n");
+    g_pDropTarget = NULL;
 }
 
 void CDropTarget::UpdateEffect(DWORD *pdwEffect, DWORD grfKeyState)
 {
     if (g_pDropSource && g_pDropSource->IsDragging())
     {
-        *pdwEffect = DROPEFFECT_NONE;
+        *pdwEffect &= DROPEFFECT_NONE;
         return;
     }
-    *pdwEffect = DROPEFFECT_COPY;
+    *pdwEffect &= DROPEFFECT_COPY;
 }
 
 STDMETHODIMP CDropTarget::QueryInterface(REFIID riid, void **ppvObject)
@@ -71,44 +76,40 @@ STDMETHODIMP_(ULONG) CDropTarget::Release()
 STDMETHODIMP
 CDropTarget::DragEnter(IDataObject *pDataObj, DWORD grfKeyState, POINTL pt, DWORD *pdwEffect)
 {
-    UpdateEffect(pdwEffect, grfKeyState);
+    printf("CDropTarget::DragEnter: 0x%08X\n", grfKeyState);
 
-    if (m_pDropTargetHelper)
-        m_pDropTargetHelper->DragEnter(m_hwnd, pDataObj, (LPPOINT)&pt, *pdwEffect);
+    *pdwEffect = DROPEFFECT_COPY;
 
-    FORMATETC formatetc;
-    formatetc.cfFormat = ::RegisterClipboardFormat(CFSTR_SHELLIDLIST);
-    formatetc.ptd      = NULL;
-    formatetc.dwAspect = DVASPECT_CONTENT;
-    formatetc.lindex   = -1;
-    formatetc.tymed    = TYMED_HGLOBAL;
-    HRESULT hr = pDataObj->QueryGetData(&formatetc);
+    FORMATETC fmt1;
+    InitFormatEtc(fmt1, ::RegisterClipboardFormat(CFSTR_SHELLIDLIST), TYMED_HGLOBAL);
+
+    HRESULT hr = pDataObj->QueryGetData(&fmt1);
     if (FAILED(hr))
     {
+        printf("QueryGetData failed: 0x%08X\n", hr);
         *pdwEffect = DROPEFFECT_NONE;
-    }
-    else
-    {
-        m_bRight = (grfKeyState & MK_RBUTTON);
+        return hr;
     }
 
+    m_bRight = (grfKeyState & MK_RBUTTON);
     return S_OK;
 }
 
 STDMETHODIMP
 CDropTarget::DragOver(DWORD grfKeyState, POINTL pt, DWORD *pdwEffect)
 {
+    printf("CDropTarget::DragOver: 0x%08X\n", grfKeyState);
+
     UpdateEffect(pdwEffect, grfKeyState);
-    if (m_pDropTargetHelper)
-        m_pDropTargetHelper->DragOver((LPPOINT)&pt, *pdwEffect);
+
     return S_OK;
 }
 
 STDMETHODIMP
 CDropTarget::DragLeave()
 {
-    if (m_pDropTargetHelper)
-        m_pDropTargetHelper->DragLeave();
+    printf("CDropTarget::DragLeave\n");
+
     return S_OK;
 }
 
@@ -117,22 +118,18 @@ LPCTSTR doLoadStr(UINT text);
 STDMETHODIMP
 CDropTarget::Drop(IDataObject *pDataObj, DWORD grfKeyState, POINTL pt, DWORD *pdwEffect)
 {
+    printf("CDropTarget::Drop: 0x%08X\n", grfKeyState);
+
     UpdateEffect(pdwEffect, grfKeyState);
 
-    if (m_pDropTargetHelper)
-        m_pDropTargetHelper->Drop(pDataObj, (LPPOINT)&pt, *pdwEffect);
-
-    FORMATETC formatetc;
-    formatetc.cfFormat = RegisterClipboardFormat(CFSTR_SHELLIDLIST);
-    formatetc.ptd      = NULL;
-    formatetc.dwAspect = DVASPECT_CONTENT;
-    formatetc.lindex   = -1;
-    formatetc.tymed    = TYMED_HGLOBAL;
+    FORMATETC fmt1;
+    InitFormatEtc(fmt1, ::RegisterClipboardFormat(CFSTR_SHELLIDLIST), TYMED_HGLOBAL);
 
     STGMEDIUM medium;
-    HRESULT hr = pDataObj->GetData(&formatetc, &medium);
+    HRESULT hr = pDataObj->GetData(&fmt1, &medium);
     if (FAILED(hr))
     {
+        printf("GetData failed: 0x%08X\n", hr);
         *pdwEffect = DROPEFFECT_NONE;
         return E_FAIL;
     }
@@ -173,22 +170,22 @@ CDropTarget::Drop(IDataObject *pDataObj, DWORD grfKeyState, POINTL pt, DWORD *pd
         SHGetPathFromIDList(pidl, szSrcFilePath);
 
         TCHAR szTempDir[MAX_PATH + 1];
-        StringCchCopy(szTempDir, _countof(szTempDir), g_temp_dir);
+        GetLongPathName(g_temp_dir, szTempDir, _countof(szTempDir));
         PathAddBackslash(szTempDir);
-        if (wcsstr(szSrcFilePath, szTempDir) == 0)
-            break;
 
         StringCchCopy(szDestFilePath, _countof(szDestFilePath), g_root_dir);
         PathAppend(szDestFilePath, PathFindFileName(szSrcFilePath));
+        printf("%ls: %ls\n", szSrcFilePath, szDestFilePath);
 
         SHFILEOPSTRUCT op = { m_hwnd, FO_COPY, szSrcFilePath, szDestFilePath };
-        op.fFlags = FOF_ALLOWUNDO | FOF_RENAMEONCOLLISION;
+        op.fFlags = FOF_ALLOWUNDO;
         ::SHFileOperation(&op);
 
         CoTaskMemFree(pidl);
     }
 
     GlobalUnlock(medium.hGlobal);
+
     ReleaseStgMedium(&medium);
     return S_OK;
 }

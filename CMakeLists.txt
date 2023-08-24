@@ -23,7 +23,7 @@ set(LIBRARY_OUTPUT_PATH ${CMAKE_BINARY_DIR})
 add_subdirectory(templa)
 
 # f-templa.exe
-add_executable(f-templa WIN32
+add_executable(f-templa
     fdt_file.cpp
     CDropTarget.cpp
     CDropSource.cpp

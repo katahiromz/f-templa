@@ -921,9 +921,6 @@ static BOOL OnCreate(HWND hwnd, LPCREATESTRUCT lpCreateStruct)
     // ウィンドウハンドルを覚えておく。
     g_hWnd = hwnd;
 
-    // ファイルドロップを許可する。
-    ::DragAcceptFiles(hwnd, TRUE);
-
     // 位置を覚えておく。
     RECT rc;
     GetWindowRect(hwnd, &rc);
@@ -1552,7 +1549,6 @@ static void OnBeginDrag(HWND hwnd, NM_LISTVIEW* pListView)
 
     // ドラッグの開始。ただし自分自身へのドロップは禁止する。
     g_pDropSource->BeginDrag();
-    ::DragAcceptFiles(hwnd, FALSE);
 
     // データオブジェクトを取得する。
     IDataObject *pDataObject = NULL;
@@ -1567,7 +1563,6 @@ static void OnBeginDrag(HWND hwnd, NM_LISTVIEW* pListView)
 
     // ドラッグの終了。
     g_pDropSource->EndDrag();
-    ::DragAcceptFiles(hwnd, TRUE);
 
     // PIDLの解放。
     for (INT i = 0; i < cSelected; ++i)
@@ -1780,41 +1775,6 @@ static LRESULT OnShellChange(HWND hwnd, WPARAM wParam, LPARAM lParam)
     return 0;
 }
 
-// WM_DROPFILES - メインウィンドウにファイルがドロップされた。
-void OnDropFiles(HWND hwnd, HDROP hdrop)
-{
-    // ドロップされたファイルの個数を取得する。
-    UINT cFiles = ::DragQueryFile(hdrop, 0xFFFFFFFF, NULL, 0);
-
-    // ドロップされた各ファイルについて。
-    for (UINT iFile = 0; iFile < cFiles; ++iFile)
-    {
-        // 一つずつドロップされたファイルのパス名を取得する。
-        WCHAR szFile[MAX_PATH + 1];
-        DragQueryFile(hdrop, iFile, szFile, _countof(szFile));
-
-        // SHFileOperationのために二重ヌル終端にする。また、バッファオーバーランを避ける。
-        szFile[_countof(szFile) - 2] = szFile[_countof(szFile) - 1] = 0;
-        szFile[lstrlenW(szFile) + 1] = 0;
-
-        // コピー先フォルダを取得する。
-        WCHAR szDir[MAX_PATH + 1];
-        lstrcpyn(szDir, g_root_dir, _countof(szDir));
-
-        // SHFileOperationのために二重ヌル終端にする。また、バッファオーバーランを避ける。
-        szDir[_countof(szDir) - 2] = szDir[_countof(szDir) - 1] = 0;
-        szDir[lstrlenW(szDir) + 1] = 0;
-
-        // ファイルコピー処理を行う。
-        SHFILEOPSTRUCT fileop = { hwnd, FO_COPY, szFile, szDir };
-        fileop.fFlags = FOF_NOCONFIRMMKDIR | FOF_SIMPLEPROGRESS;
-        SHFileOperation(&fileop);
-    }
-
-    // HDROPの破棄。
-    ::DragFinish(hdrop);
-}
-
 // WM_MOVE - メインウィンドウの移動。
 void OnMove(HWND hwnd, int x, int y)
 {
@@ -1841,7 +1801,6 @@ WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
         HANDLE_MSG(hwnd, WM_CONTEXTMENU, OnContextMenu);
         HANDLE_MSG(hwnd, WM_NOTIFY, OnNotify);
         HANDLE_MSG(hwnd, WM_DESTROY, OnDestroy);
-        HANDLE_MSG(hwnd, WM_DROPFILES, OnDropFiles);
     case WM_SHELLCHANGE:
         return OnShellChange(hwnd, wParam, lParam);
     default:

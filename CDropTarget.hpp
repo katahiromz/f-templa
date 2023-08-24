@@ -18,7 +18,6 @@ public:
 protected:
     LONG m_cRef;
     HWND m_hwnd;
-    IDropTargetHelper *m_pDropTargetHelper;
     BOOL m_bRight;
 
     void UpdateEffect(DWORD *pdwEffect, DWORD grfKeyState);
