@@ -8,13 +8,13 @@
 #include <map>
 #include <algorithm>
 #include <cassert>
-#include "CDropTarget.hpp"
-#include "CDropSource.hpp"
-#include "ScrollView.hpp"
-#include "f-templa.hpp"
+#include "CDropTarget.hpp"  // ドロップターゲット。
+#include "CDropSource.hpp"  // ドロップソース。
+#include "ScrollView.hpp"   // スクロールビュー。
+#include "f-templa.hpp"     // メインのヘッダ。
 #include "fdt_file.hpp"
-#include "InputBox.hpp"
-#include "resource.h"
+#include "InputBox.hpp"     // 入力ボックス。
+#include "resource.h"       // リソースIDヘッダ。
 
 #define CLASSNAME TEXT("FolderDeTemplate")  // ウィンドウクラス名。
 #define WM_SHELLCHANGE (WM_USER + 100)      // シェル通知を受け取るメッセージ。
@@ -58,38 +58,45 @@ LPCTSTR doLoadStr(UINT text)
 // 設定をレジストリから読み込む。
 BOOL LoadSettings(void)
 {
+    // 設定の初期化。
     g_ptWnd = { CW_USEDEFAULT, CW_USEDEFAULT };
     g_sizWnd = { 500, 350 };
 
+    // レジストリキーを開く。
     HKEY hKey;
     LONG error = RegOpenKeyEx(HKEY_CURRENT_USER,
                               TEXT("Software\\Katayama Hirofumi MZ\\FolderDeTemplate"),
                               0, KEY_READ, &hKey);
     if (error)
-        return FALSE;
+        return FALSE; // 開けなかった。
 
     DWORD dwValue, cbValue;
 
+    // レジストリから値を読み込む。
     cbValue = sizeof(dwValue);
     error = RegQueryValueEx(hKey, TEXT("g_ptWnd.x"), NULL, NULL, (LPBYTE)&dwValue, &cbValue);
     if (!error && cbValue == sizeof(dwValue))
         g_ptWnd.x = INT(dwValue);
 
+    // レジストリから値を読み込む。
     cbValue = sizeof(dwValue);
     error = RegQueryValueEx(hKey, TEXT("g_ptWnd.y"), NULL, NULL, (LPBYTE)&dwValue, &cbValue);
     if (!error && cbValue == sizeof(dwValue))
         g_ptWnd.y = LONG(dwValue);
 
+    // レジストリから値を読み込む。
     cbValue = sizeof(dwValue);
     error = RegQueryValueEx(hKey, TEXT("g_sizWnd.cx"), NULL, NULL, (LPBYTE)&dwValue, &cbValue);
     if (!error && cbValue == sizeof(dwValue))
         g_sizWnd.cx = LONG(dwValue);
 
+    // レジストリから値を読み込む。
     cbValue = sizeof(dwValue);
     error = RegQueryValueEx(hKey, TEXT("g_sizWnd.cy"), NULL, NULL, (LPBYTE)&dwValue, &cbValue);
     if (!error && cbValue == sizeof(dwValue))
         g_sizWnd.cy = LONG(dwValue);
 
+    // レジストリキーを閉じる。
     RegCloseKey(hKey);
     return TRUE;
 }
@@ -97,6 +104,7 @@ BOOL LoadSettings(void)
 // 設定をレジストリから保存する。
 BOOL SaveSettings(void)
 {
+    // レジストリに会社キーを作成する。
     HKEY hCompanyKey;
     LONG error = RegCreateKeyEx(HKEY_CURRENT_USER,
                                 TEXT("Software\\Katayama Hirofumi MZ"),
@@ -104,6 +112,7 @@ BOOL SaveSettings(void)
     if (error)
         return FALSE;
 
+    // レジストリにアプリキーを作成する。
     HKEY hAppKey;
     error = RegCreateKeyEx(hCompanyKey,
                            TEXT("FolderDeTemplate"),
@@ -116,22 +125,27 @@ BOOL SaveSettings(void)
 
     DWORD dwValue, cbValue;
 
+    // レジストリに値を書き込む。
     cbValue = sizeof(dwValue);
     dwValue = g_ptWnd.x;
     RegSetValueEx(hAppKey, TEXT("g_ptWnd.x"), 0, REG_DWORD, (BYTE*)&dwValue, cbValue);
 
+    // レジストリに値を書き込む。
     cbValue = sizeof(dwValue);
     dwValue = g_ptWnd.y;
     RegSetValueEx(hAppKey, TEXT("g_ptWnd.y"), 0, REG_DWORD, (BYTE*)&dwValue, cbValue);
 
+    // レジストリに値を書き込む。
     cbValue = sizeof(dwValue);
     dwValue = g_sizWnd.cx;
     RegSetValueEx(hAppKey, TEXT("g_sizWnd.cx"), 0, REG_DWORD, (BYTE*)&dwValue, cbValue);
 
+    // レジストリに値を書き込む。
     cbValue = sizeof(dwValue);
     dwValue = g_sizWnd.cy;
     RegSetValueEx(hAppKey, TEXT("g_sizWnd.cy"), 0, REG_DWORD, (BYTE*)&dwValue, cbValue);
 
+    // レジストリキーを閉じる。
     RegCloseKey(hAppKey);
     RegCloseKey(hCompanyKey);
     return TRUE;
@@ -142,6 +156,7 @@ static void InitListView(HWND hListView, HIMAGELIST hImageList, LPCTSTR pszDir)
 {
     GetFullPathName(pszDir, _countof(g_root_dir), g_root_dir, NULL);
 
+    // FindFirstFile用のスペック文字列を構築する。
     TCHAR spec[MAX_PATH];
     StringCchCopy(spec, _countof(spec), g_root_dir);
     PathAddBackslash(spec);
@@ -150,54 +165,59 @@ static void InitListView(HWND hListView, HIMAGELIST hImageList, LPCTSTR pszDir)
     INT i = 0;
     WIN32_FIND_DATA find;
     HANDLE hFind = FindFirstFile(spec, &find);
-    if (hFind != INVALID_HANDLE_VALUE)
+    if (hFind == INVALID_HANDLE_VALUE)
+        return;
+
+    do
     {
-        do
+        // 「.」「..」を無視する。
+        if (lstrcmp(find.cFileName, TEXT(".")) == 0 ||
+            lstrcmp(find.cFileName, TEXT("..")) == 0)
         {
-            // 「.」「..」を無視する。
-            if (lstrcmp(find.cFileName, TEXT(".")) == 0 ||
-                lstrcmp(find.cFileName, TEXT("..")) == 0)
-            {
-                continue;
-            }
+            continue;
+        }
 
-            // 拡張子.fdtのファイルを無視する。
-            if (templa_wildcard(find.cFileName, TEXT("*.fdt")))
-                continue;
+        // 拡張子が「.fdt」のファイルを無視する。
+        if (templa_wildcard(find.cFileName, TEXT("*.fdt")))
+            continue;
 
-            // パスファイル名を構築する。
-            TCHAR szPathName[MAX_PATH];
-            StringCchCopy(szPathName, _countof(szPathName), g_root_dir);
-            PathAppend(szPathName, find.cFileName);
+        // パスファイル名を構築する。
+        TCHAR szPathName[MAX_PATH];
+        StringCchCopy(szPathName, _countof(szPathName), g_root_dir);
+        PathAppend(szPathName, find.cFileName);
 
-            // アイコンを取得する。
-            SHFILEINFO info;
-            UINT uFlags = SHGFI_SYSICONINDEX | SHGFI_USEFILEATTRIBUTES;
-            if (lstrcmpi(PathFindExtension(szPathName), TEXT(".LNK")) == 0)
-                uFlags |= SHGFI_LINKOVERLAY;
-            SHGetFileInfo(szPathName, find.dwFileAttributes, &info, sizeof(info), uFlags);
+        // アイコンを取得する。
+        SHFILEINFO info;
+        UINT uFlags = SHGFI_ICON | SHGFI_LARGEICON | SHGFI_USEFILEATTRIBUTES;
+        if (lstrcmpi(PathFindExtension(szPathName), TEXT(".LNK")) == 0)
+            uFlags |= SHGFI_LINKOVERLAY;
+        SHGetFileInfo(szPathName, find.dwFileAttributes, &info, sizeof(info), uFlags);
 
-            // ショートカットの拡張子「.LNK」を表示しない。
-            if (lstrcmpi(PathFindExtension(szPathName), TEXT(".LNK")) == 0)
-                PathRemoveExtension(find.cFileName);
+        // ショートカットの拡張子「.LNK」を表示しない。
+        if (lstrcmpi(PathFindExtension(szPathName), TEXT(".LNK")) == 0)
+            PathRemoveExtension(find.cFileName);
 
-            // 項目をリストビューに追加する。
-            LV_ITEM item = { LVIF_TEXT | LVIF_IMAGE | LVIF_PARAM };
-            item.iItem    = i++;
-            item.iSubItem = 0;
-            item.pszText  = find.cFileName;
-            item.iImage   = info.iIcon;
-            item.lParam   = (LPARAM)ILCreateFromPath(szPathName); // PIDLデータを保持する。
-            ListView_InsertItem(hListView, &item);
-        } while (FindNextFile(hFind, &find));
+        // 項目をリストビューに追加する。
+        LV_ITEM item = { LVIF_TEXT | LVIF_IMAGE | LVIF_PARAM };
+        item.iItem    = i++;
+        item.iSubItem = 0;
+        item.pszText  = find.cFileName;
+        item.iImage   = ImageList_AddIcon(g_hImageList, info.hIcon);
+        item.lParam   = (LPARAM)ILCreateFromPath(szPathName); // PIDLデータを保持する。
+        ListView_InsertItem(hListView, &item);
 
-        FindClose(hFind);
-    }
+        // アイコンを破棄。
+        ::DestroyIcon(info.hIcon);
+    } while (FindNextFile(hFind, &find));
+
+    // 検索終了。
+    ::FindClose(hFind);
 }
 
 // WM_INITDIALOG - ダイアログ1の初期化。
 static BOOL Dialog1_OnInitDialog(HWND hwnd, HWND hwndFocus, LPARAM lParam)
 {
+    // スクロールビューを初期化する。
     ScrollView_Init(&g_Dialog1ScrollView, hwnd, SB_VERT);
     return TRUE;
 }
@@ -205,18 +225,21 @@ static BOOL Dialog1_OnInitDialog(HWND hwnd, HWND hwndFocus, LPARAM lParam)
 // WM_SIZE - ダイアログ1のサイズ変更。
 static void Dialog1_OnSize(HWND hwnd, UINT state, int cx, int cy)
 {
+    // スクロールビューの情報を更新する。
     ScrollView_OnSize(&g_Dialog1ScrollView, state, cx, cy);
 }
 
 // WM_VSCROLL - ダイアログ1の縦スクロール。
 static void Dialog1_OnVScroll(HWND hwnd, HWND hwndCtl, UINT code, int pos)
 {
+    // スクロールビューの縦スクロール。
     ScrollView_OnVScroll(&g_Dialog1ScrollView, hwndCtl, code, pos);
 }
 
 // WM_MOUSEWHEEL - ダイアログ1のマウスホイール回転。
 static void Dialog1_OnMouseWheel(HWND hwnd, int xPos, int yPos, int zDelta, UINT fwKeys)
 {
+    // WM_VSCROLLメッセージ送信。により、縦スクロール。
     if (zDelta > 0)
     {
         for (INT i = 0; i < 3; ++i)
@@ -289,6 +312,7 @@ static string_list_t g_deleted_sections;
 // WM_INITDIALOG - プリセットのダイアログ初期化。
 static BOOL Preset_OnInitDialog(HWND hwnd, HWND hwndFocus, LPARAM lParam)
 {
+    // リストにプリセットの値を追加する。
     HWND hLst1 = GetDlgItem(hwnd, lst1);
     for (auto& name : *(string_list_t*)lParam)
     {
@@ -296,8 +320,10 @@ static BOOL Preset_OnInitDialog(HWND hwnd, HWND hwndFocus, LPARAM lParam)
     }
     ListBox_SetCurSel(hLst1, 0);
 
+    // 削除されたセクションをクリアする。
     g_deleted_sections.clear();
 
+    // ダイアログを中央に移動する。
     CenterWindowDx(hwnd);
     return TRUE;
 }
@@ -305,31 +331,45 @@ static BOOL Preset_OnInitDialog(HWND hwnd, HWND hwndFocus, LPARAM lParam)
 // psh1 - プリセットの削除。
 static void Preset_OnDelete(HWND hwnd)
 {
+    // 現在選択中の項目を取得する。
     HWND hLst1 = GetDlgItem(hwnd, lst1);
     INT iItem = ListBox_GetCurSel(hLst1);
-    if (iItem != LB_ERR)
-    {
-        TCHAR szText[1024];
-        ListBox_GetText(hLst1, iItem, szText);
-        ListBox_DeleteString(hLst1, iItem);
-        g_deleted_sections.push_back(szText);
-        if (iItem >= ListBox_GetCount(hLst1))
-            ListBox_SetCurSel(hLst1, iItem - 1);
-        else
-            ListBox_SetCurSel(hLst1, iItem);
-    }
+    if (iItem == LB_ERR)
+        return;
+
+    // 項目のテキストを取得する。
+    TCHAR szText[1024];
+    ListBox_GetText(hLst1, iItem, szText);
+
+    // 選択項目を削除する。
+    ListBox_DeleteString(hLst1, iItem);
+
+    // 削除された項目として覚えておく。
+    g_deleted_sections.push_back(szText);
+
+    // 選択を移動する。
+    if (iItem >= ListBox_GetCount(hLst1))
+        ListBox_SetCurSel(hLst1, iItem - 1);
+    else
+        ListBox_SetCurSel(hLst1, iItem);
 }
 
 // psh2 - プリセットの「すべて削除」。
 static void Preset_OnDeleteAll(HWND hwnd)
 {
+    // 逆順で削除する。
     HWND hLst1 = GetDlgItem(hwnd, lst1);
     INT nCount = ListBox_GetCount(hLst1);
     for (INT iItem = nCount - 1; iItem >= 0; --iItem)
     {
+        // テキストを取得する。
         TCHAR szText[1024];
         ListBox_GetText(hLst1, iItem, szText);
+
+        // 削除する。
         ListBox_DeleteString(hLst1, iItem);
+
+        // 削除されたセクションとして覚えておく。
         g_deleted_sections.push_back(szText);
     }
 }
@@ -370,6 +410,7 @@ static void UpdateValue(const string_t& first, string_t& second)
     SYSTEMTIME st;
     ::GetLocalTime(&st);
 
+    // 今日。
     if (first == L"{{TODAY}}")
     {
         TCHAR szText[128];
@@ -391,6 +432,7 @@ static void UpdateValue(const string_t& first, string_t& second)
         return;
     }
 
+    // 現在時刻。
     if (first == L"{{NOW}}")
     {
         TCHAR szText[128];
@@ -412,6 +454,7 @@ static void UpdateValue(const string_t& first, string_t& second)
         return;
     }
 
+    // タイムスタンプ。
     if (first == L"{{TIMESTAMP}}")
     {
         TCHAR szText[128];
@@ -442,42 +485,49 @@ static void UpdateValue(const string_t& first, string_t& second)
         return;
     }
 
+    // 年。
     if (first == L"{{YEAR}}" || first == doLoadStr(IDS_THISYEAR))
     {
         second = std::to_wstring(st.wYear);
         return;
     }
 
+    // 月。
     if (first == L"{{MONTH}}" || first == doLoadStr(IDS_THISMONTH))
     {
         second = std::to_wstring(st.wMonth);
         return;
     }
 
+    // 日。
     if (first == L"{{DAY}}" || first == doLoadStr(IDS_THISDAY))
     {
         second = std::to_wstring(st.wDay);
         return;
     }
 
+    // 時。
     if (first == L"{{HOUR}}" || first == doLoadStr(IDS_THISHOUR))
     {
         second = std::to_wstring(st.wHour);
         return;
     }
 
+    // 分。
     if (first == L"{{MINUTE}}" || first == doLoadStr(IDS_THISMINUTE))
     {
         second = std::to_wstring(st.wMinute);
         return;
     }
 
+    // 秒。
     if (first == L"{{SECOND}}" || first == doLoadStr(IDS_THISSECOND))
     {
         second = std::to_wstring(st.wSecond);
         return;
     }
 
+    // ユーザ名。
     if (first == L"{{USER}}" ||
         first == doLoadStr(IDS_USERNAME) ||
         first == doLoadStr(IDS_USERNAME2))
@@ -489,6 +539,7 @@ static void UpdateValue(const string_t& first, string_t& second)
         return;
     }
 
+    // 曜日。
     if (first == L"{{WEEKDAY}}")
     {
         static const LPCWSTR days[] =
@@ -575,8 +626,10 @@ static void Dialog2_OnPreset(HWND hwnd)
     const INT c_section_first = 1000;
     if (section_names.size())
     {
+        // セクション名をソートする。
         std::sort(section_names.begin(), section_names.end());
 
+        // セクション名を使ってメニュー項目を追加する。
         INT i = c_section_first;
         for (auto& name : section_names)
         {
@@ -961,7 +1014,9 @@ static BOOL OnCreate(HWND hwnd, LPCREATESTRUCT lpCreateStruct)
 
     // イメージリストを取得。
     SHFILEINFO info;
-    g_hImageList = (HIMAGELIST)SHGetFileInfo(TEXT("C:\\"), 0, &info, sizeof(info), SHGFI_SYSICONINDEX | SHGFI_LARGEICON);
+    g_hImageList = ImageList_Create(
+        GetSystemMetrics(SM_CXICON), GetSystemMetrics(SM_CYICON),
+        ILC_COLOR32 | ILC_MASK, 32, 32);
     if (g_hImageList == NULL)
         return FALSE;
     // リストビューにイメージリストをセットする。
@@ -1776,7 +1831,7 @@ static LRESULT OnShellChange(HWND hwnd, WPARAM wParam, LPARAM lParam)
                 // アイコンインデックスを取得する。
                 DWORD dwAttrs = ((lEvent == SHCNE_MKDIR) ? FILE_ATTRIBUTE_DIRECTORY : 0);
                 SHFILEINFO info;
-                UINT uFlags = SHGFI_SYSICONINDEX | SHGFI_USEFILEATTRIBUTES;
+                UINT uFlags = SHGFI_ICON | SHGFI_LARGEICON | SHGFI_USEFILEATTRIBUTES;
                 if (lstrcmpi(PathFindExtension(szPath), TEXT(".LNK")) == 0)
                     uFlags |= SHGFI_LINKOVERLAY;
                 SHGetFileInfo(szPath, dwAttrs, &info, sizeof(info), uFlags);
@@ -1786,10 +1841,12 @@ static LRESULT OnShellChange(HWND hwnd, WPARAM wParam, LPARAM lParam)
                 item.iItem     = ListView_GetItemCount(g_hListView);
                 item.iSubItem  = 0;
                 item.pszText   = szFileTitle;
-                item.iImage    = info.iIcon;
+                item.iImage    = ImageList_AddIcon(g_hImageList, info.hIcon);
                 item.lParam    = (LPARAM)ILCreateFromPath(szPath); // PIDLデータを保持する。
-
                 iItem = ListView_InsertItem(g_hListView, &item);
+
+                // アイコンを破棄。
+                ::DestroyIcon(info.hIcon);
 
                 // 追加された項目が見えるように表示位置を移動する。
                 ListView_EnsureVisible(g_hListView, iItem, FALSE);
