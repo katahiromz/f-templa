@@ -154,24 +154,40 @@ static void InitListView(HWND hListView, HIMAGELIST hImageList, LPCTSTR pszDir)
     {
         do
         {
+            // 「.」「..」を無視する。
             if (lstrcmp(find.cFileName, TEXT(".")) == 0 ||
                 lstrcmp(find.cFileName, TEXT("..")) == 0)
             {
                 continue;
             }
 
+            // 拡張子.fdtのファイルを無視する。
             if (templa_wildcard(find.cFileName, TEXT("*.fdt")))
                 continue;
 
-            SHFILEINFO info;
-            SHGetFileInfo(find.cFileName, find.dwFileAttributes, &info, sizeof(info),
-                          SHGFI_SYSICONINDEX | SHGFI_USEFILEATTRIBUTES);
+            // パスファイル名を構築する。
+            TCHAR szPathName[MAX_PATH];
+            StringCchCopy(szPathName, _countof(szPathName), g_root_dir);
+            PathAppend(szPathName, find.cFileName);
 
-            LV_ITEM item = { LVIF_TEXT | LVIF_IMAGE };
+            // アイコンを取得する。
+            SHFILEINFO info;
+            UINT uFlags = SHGFI_SYSICONINDEX | SHGFI_USEFILEATTRIBUTES;
+            if (lstrcmpi(PathFindExtension(szPathName), TEXT(".LNK")) == 0)
+                uFlags |= SHGFI_LINKOVERLAY;
+            SHGetFileInfo(szPathName, find.dwFileAttributes, &info, sizeof(info), uFlags);
+
+            // ショートカットの拡張子「.LNK」を表示しない。
+            if (lstrcmpi(PathFindExtension(szPathName), TEXT(".LNK")) == 0)
+                PathRemoveExtension(find.cFileName);
+
+            // 項目をリストビューに追加する。
+            LV_ITEM item = { LVIF_TEXT | LVIF_IMAGE | LVIF_PARAM };
             item.iItem    = i++;
             item.iSubItem = 0;
             item.pszText  = find.cFileName;
             item.iImage   = info.iIcon;
+            item.lParam   = (LPARAM)ILCreateFromPath(szPathName); // PIDLデータを保持する。
             ListView_InsertItem(hListView, &item);
         } while (FindNextFile(hFind, &find));
 
@@ -518,10 +534,12 @@ static void Dialog2_OnPreset(HWND hwnd)
     if (iItem == -1)
         return;
 
-    TCHAR szItem[MAX_PATH], szPath[MAX_PATH];
-    ListView_GetItemText(g_hListView, iItem, 0, szItem, _countof(szItem));
-    StringCchCopy(szPath, _countof(szPath), g_root_dir);
-    PathAppend(szPath, szItem);
+    LV_ITEM item = { LVIF_PARAM, iItem };
+    ListView_GetItem(g_hListView, &item);
+
+    TCHAR szPath[MAX_PATH];
+    auto pidl = (LPITEMIDLIST)item.lParam;
+    SHGetPathFromIDList(pidl, szPath);
 
     // FDTファイルのパスファイル名を構築する。
     string_t path = szPath;
@@ -798,10 +816,11 @@ static void Dialog2_OnDownArrow(HWND hwnd, INT id)
                 SetFocus(hwndEdit);
             }
 
-            TCHAR szItem[MAX_PATH], szPath[MAX_PATH];
-            ListView_GetItemText(g_hListView, iItem, 0, szItem, _countof(szItem));
-            StringCchCopy(szPath, _countof(szPath), g_root_dir);
-            PathAppend(szPath, szItem);
+            LV_ITEM item = { LVIF_PARAM, iItem };
+            ListView_GetItem(g_hListView, &item);
+            TCHAR szPath[MAX_PATH];
+            auto pidl = (LPITEMIDLIST)item.lParam;
+            SHGetPathFromIDList(pidl, szPath);
 
             string_t path = szPath;
             path += L".fdt";
@@ -1065,7 +1084,6 @@ BOOL ShowContextMenu(HWND hwnd, INT iItem, INT xPos, INT yPos, UINT uFlags = CMF
     IContextMenu *pContextMenu = NULL;
     LPITEMIDLIST pidl = NULL;
     TCHAR szPath[MAX_PATH];
-    TCHAR szItem[MAX_PATH];
     HMENU hMenu = CreatePopupMenu();
     UINT nID;
 
@@ -1076,9 +1094,11 @@ BOOL ShowContextMenu(HWND hwnd, INT iItem, INT xPos, INT yPos, UINT uFlags = CMF
     else
     {
         ListView_EnsureVisible(g_hListView, iItem, FALSE);
-        ListView_GetItemText(g_hListView, iItem, 0, szItem, _countof(szItem));
-        StringCchCopy(szPath, _countof(szPath), g_root_dir);
-        PathAppend(szPath, szItem);
+
+        LV_ITEM item = { LVIF_PARAM, iItem };
+        ListView_GetItem(g_hListView, &item);
+        auto pidl = (LPITEMIDLIST)item.lParam;
+        SHGetPathFromIDList(pidl, szPath);
     }
 
     hr = SHParseDisplayName(szPath, 0, &pidl, 0, 0);
@@ -1218,10 +1238,11 @@ bool SaveFdtFile(LPCTSTR pszBasePath, mapping_t& mapping)
 // リストビューの選択が解除された。
 static void OnDeSelectItem(HWND hwnd, INT iItem)
 {
-    TCHAR szItem[MAX_PATH], szPath[MAX_PATH];
-    ListView_GetItemText(g_hListView, iItem, 0, szItem, _countof(szItem));
-    StringCchCopy(szPath, _countof(szPath), g_root_dir);
-    PathAppend(szPath, szItem);
+    LV_ITEM item = { LVIF_PARAM, iItem };
+    ListView_GetItem(g_hListView, &item);
+    TCHAR szPath[MAX_PATH];
+    auto pidl = (LPITEMIDLIST)item.lParam;
+    SHGetPathFromIDList(pidl, szPath);
 
     mapping_t mapping = DoGetMapping();
     SaveFdtFile(szPath, mapping);
@@ -1415,10 +1436,11 @@ static bool LoadFdtFile(LPCTSTR pszBasePath, mapping_t& mapping)
 static void Dialog2_InitSubst(HWND hwndDlg, INT iItem)
 {
     // 項目のパスファイル名を構築する。
-    TCHAR szItem[MAX_PATH], szPath[MAX_PATH];
-    ListView_GetItemText(g_hListView, iItem, 0, szItem, _countof(szItem));
-    StringCchCopy(szPath, _countof(szPath), g_root_dir);
-    PathAppend(szPath, szItem);
+    LV_ITEM item = { LVIF_PARAM, iItem };
+    ListView_GetItem(g_hListView, &item);
+    TCHAR szPath[MAX_PATH];
+    auto pidl = (LPITEMIDLIST)item.lParam;
+    SHGetPathFromIDList(pidl, szPath);
 
     // 写像を初期化する。
     mapping_t mapping;
@@ -1530,10 +1552,12 @@ static void OnBeginDrag(HWND hwnd, NM_LISTVIEW* pListView)
     {
         if (ListView_GetItemState(g_hListView, i, LVIS_SELECTED))
         {
-            TCHAR szPath[MAX_PATH], szItem[MAX_PATH];
-            ListView_GetItemText(g_hListView, i, 0, szItem, _countof(szItem));
-            StringCchCopy(szPath, _countof(szPath), g_root_dir);
-            PathAppend(szPath, szItem);
+            LV_ITEM item = { LVIF_PARAM, i };
+            ListView_GetItem(g_hListView, &item);
+            TCHAR szPath[MAX_PATH];
+            auto pidl = (LPITEMIDLIST)item.lParam;
+            SHGetPathFromIDList(pidl, szPath);
+
             DoTempla(hwnd, szPath, i);
             ppidlAbsolute[j++] = ILCreateFromPath(szPath);
         }
@@ -1575,13 +1599,14 @@ static void OnBeginDrag(HWND hwnd, NM_LISTVIEW* pListView)
 // VK_DELETE - リストビューでDelキーが押された。
 static void OnListViewDeleteKey(HWND hwnd, INT iItem)
 {
-    TCHAR szPath[MAX_PATH + 1], szItem[MAX_PATH];
+    TCHAR szPath[MAX_PATH + 1];
     ZeroMemory(szPath, sizeof(szPath)); // SHFileOperationのために、二重ヌル終端にする。
 
     // 項目のパスファイル名を取得。
-    StringCchCopy(szPath, _countof(szPath), g_root_dir);
-    ListView_GetItemText(g_hListView, iItem, 0, szItem, _countof(szItem));
-    PathAppend(szPath, szItem);
+    LV_ITEM item = { LVIF_PARAM, iItem };
+    ListView_GetItem(g_hListView, &item);
+    auto pidl = (LPITEMIDLIST)item.lParam;
+    SHGetPathFromIDList(pidl, szPath);
 
     if (::GetKeyState(VK_SHIFT) < 0) // Shiftキーが押されている
     {
@@ -1598,6 +1623,11 @@ static void OnListViewDeleteKey(HWND hwnd, INT iItem)
         op.fFlags = FOF_ALLOWUNDO;
         ::SHFileOperation(&op);
     }
+}
+
+static void OnDeleteItem(HWND hwnd, NM_LISTVIEW *pListView)
+{
+    ILFree((LPITEMIDLIST)pListView->lParam);
 }
 
 // LVN_KEYDOWN - リストビューでキーが押された。
@@ -1694,6 +1724,11 @@ static LRESULT OnNotify(HWND hwnd, int idFrom, LPNMHDR pnmhdr)
         // ドラッグが開始された。
         OnBeginDrag(hwnd, (NM_LISTVIEW*)pnmhdr);
         break;
+
+    case LVN_DELETEITEM:
+        // 項目が削除された。
+        OnDeleteItem(hwnd, (NM_LISTVIEW*)pnmhdr);
+        break;
     }
 
     return 0;
@@ -1721,8 +1756,16 @@ static LRESULT OnShellChange(HWND hwnd, WPARAM wParam, LPARAM lParam)
     {
         SHGetPathFromIDList(ppidlAbsolute[0], szPath);
         LPTSTR pszFileName = PathFindFileName(szPath);
-        LV_FINDINFO Find = { LVFI_STRING, pszFileName };
+
+        // ショートカットの拡張子「.LNK」を表示しない。
+        TCHAR szFileTitle[MAX_PATH];
+        GetFileTitle(szPath, szFileTitle, _countof(szFileTitle));
+        if (lstrcmpi(PathFindExtension(szFileTitle), TEXT(".LNK")) == 0)
+            PathRemoveExtension(szFileTitle);
+
+        LV_FINDINFO Find = { LVFI_STRING, szFileTitle };
         INT iItem = ListView_FindItem(g_hListView, -1, &Find);
+
         switch (lEvent)
         {
         case SHCNE_CREATE:
@@ -1733,15 +1776,19 @@ static LRESULT OnShellChange(HWND hwnd, WPARAM wParam, LPARAM lParam)
                 // アイコンインデックスを取得する。
                 DWORD dwAttrs = ((lEvent == SHCNE_MKDIR) ? FILE_ATTRIBUTE_DIRECTORY : 0);
                 SHFILEINFO info;
-                SHGetFileInfo(pszFileName, dwAttrs, &info, sizeof(info),
-                              SHGFI_SYSICONINDEX | SHGFI_USEFILEATTRIBUTES);
+                UINT uFlags = SHGFI_SYSICONINDEX | SHGFI_USEFILEATTRIBUTES;
+                if (lstrcmpi(PathFindExtension(szPath), TEXT(".LNK")) == 0)
+                    uFlags |= SHGFI_LINKOVERLAY;
+                SHGetFileInfo(szPath, dwAttrs, &info, sizeof(info), uFlags);
 
                 // リストビューに項目を追加する。
-                LV_ITEM item = { LVIF_TEXT | LVIF_IMAGE };
+                LV_ITEM item = { LVIF_TEXT | LVIF_IMAGE | LVIF_PARAM };
                 item.iItem     = ListView_GetItemCount(g_hListView);
                 item.iSubItem  = 0;
-                item.pszText   = pszFileName;
+                item.pszText   = szFileTitle;
                 item.iImage    = info.iIcon;
+                item.lParam    = (LPARAM)ILCreateFromPath(szPath); // PIDLデータを保持する。
+
                 iItem = ListView_InsertItem(g_hListView, &item);
 
                 // 追加された項目が見えるように表示位置を移動する。
@@ -1816,6 +1863,8 @@ WinMain(HINSTANCE   hInstance,
         LPSTR       lpCmdLine,
         INT         nCmdShow)
 {
+    HRESULT hrCoInit = CoInitialize(NULL);
+
     // コモンコントロールを初期化。
     InitCommonControls();
 
@@ -1880,6 +1929,9 @@ WinMain(HINSTANCE   hInstance,
 
     // 設定の保存。
     SaveSettings();
+
+    if (SUCCEEDED(hrCoInit))
+        CoUninitialize();
 
     return INT(msg.wParam);
 }
