@@ -1003,7 +1003,7 @@ static BOOL OnCreate(HWND hwnd, LPCREATESTRUCT lpCreateStruct)
     ::OleInitialize(NULL);
 
     // リストビューを作成。
-    DWORD style = WS_CHILD | WS_VISIBLE | LVS_ICON |
+    DWORD style = WS_CHILD | WS_VISIBLE | LVS_ICON | LVS_EDITLABELS |
         LVS_AUTOARRANGE | LVS_SHOWSELALWAYS | LVS_SINGLESEL |
         WS_BORDER | WS_VSCROLL | WS_HSCROLL;
     DWORD exstyle = WS_EX_CLIENTEDGE;
@@ -1012,8 +1012,7 @@ static BOOL OnCreate(HWND hwnd, LPCREATESTRUCT lpCreateStruct)
     if (g_hListView == NULL)
         return FALSE;
 
-    // イメージリストを取得。
-    SHFILEINFO info;
+    // イメージリストを作成する。
     g_hImageList = ImageList_Create(
         GetSystemMetrics(SM_CXICON), GetSystemMetrics(SM_CYICON),
         ILC_COLOR32 | ILC_MASK, 32, 32);
@@ -1118,6 +1117,16 @@ static void OnSize(HWND hwnd, UINT state, int cx, int cy)
 // コンテキストメニューの処理を実行する。
 HRESULT ExecuteContextCommand(HWND hwnd, IContextMenu *pContextMenu, UINT nCmd)
 {
+    // 「名前の変更」ならばそうする。
+    TCHAR verb[64];
+    pContextMenu->GetCommandString(nCmd, GCS_VERB, NULL, (LPSTR)verb, sizeof(verb));
+    if (lstrcmpi(verb, TEXT("rename")) == 0)
+    {
+        INT iItem = ListView_GetNextItem(g_hListView, -1, LVNI_SELECTED);
+        ListView_EditLabel(g_hListView, iItem);
+        return S_OK;
+    }
+
     CMINVOKECOMMANDINFO info = { sizeof(info) };
     info.lpVerb = MAKEINTRESOURCEA(nCmd);
     info.hwnd = hwnd;
@@ -1242,7 +1251,7 @@ static void OnContextMenu(HWND hwnd, HWND hwndContext, UINT xPos, UINT yPos)
         yPos = pt.y;
     }
 
-    ShowContextMenu(hwnd, iItem, xPos, yPos, CMF_EXPLORE | CMF_NODEFAULT);
+    ShowContextMenu(hwnd, iItem, xPos, yPos, CMF_EXPLORE | CMF_NODEFAULT | CMF_CANRENAME);
 }
 
 // 一時ディレクトリを削除する。
@@ -1323,7 +1332,7 @@ static void OnDestroy(HWND hwnd)
     // D&Dを無効化する。
     ::RevokeDragDrop(hwnd);
 
-    // D&Dを破棄する。
+    // D&D関連オブジェクトを破棄する。
     if (g_pDropTarget)
     {
         g_pDropTarget->Release();
@@ -1680,6 +1689,7 @@ static void OnListViewDeleteKey(HWND hwnd, INT iItem)
     }
 }
 
+// リストビューの項目を削除する処理。
 static void OnDeleteItem(HWND hwnd, NM_LISTVIEW *pListView)
 {
     ILFree((LPITEMIDLIST)pListView->lParam);
@@ -1699,6 +1709,13 @@ static LRESULT OnListViewKeyDown(HWND hwnd, LV_KEYDOWN *pKeyDown)
     case VK_DELETE: // Delキー（削除）が押された。
         if (iItem != -1)
             OnListViewDeleteKey(hwnd, iItem);
+        break;
+
+    case VK_F2: // F2キーが押された。
+        {
+            INT iItem = ListView_GetNextItem(g_hListView, -1, LVNI_SELECTED);
+            ListView_EditLabel(g_hListView, iItem);
+        }
         break;
     }
 
@@ -1757,6 +1774,7 @@ static LRESULT OnNotify(HWND hwnd, int idFrom, LPNMHDR pnmhdr)
     if (idFrom != IDW_LISTVIEW)
         return 0;
 
+    // 通知コードに応じて処理。
     switch (pnmhdr->code)
     {
     case NM_DBLCLK: // ダブルクリックされた。
@@ -1784,6 +1802,68 @@ static LRESULT OnNotify(HWND hwnd, int idFrom, LPNMHDR pnmhdr)
         // 項目が削除された。
         OnDeleteItem(hwnd, (NM_LISTVIEW*)pnmhdr);
         break;
+
+    case LVN_BEGINLABELEDIT:
+        // 名前の変更。
+        return FALSE;
+
+    case LVN_ENDLABELEDIT:
+        // 名前の変更の終了。
+        {
+            LV_DISPINFO *pDispInfo = (LV_DISPINFO *)pnmhdr;
+            if (pDispInfo->item.pszText == NULL)
+                break; // キャンセルされた。
+
+            PathCleanupSpec(NULL, pDispInfo->item.pszText);
+            if (pDispInfo->item.pszText[0] == 0)
+                return FALSE; // 無効なファイル名だった。
+
+            // パス名を取得する。
+            LV_ITEM item = { LVIF_PARAM, pDispInfo->item.iItem };
+            ListView_GetItem(g_hListView, &item);
+            auto pidl = (LPITEMIDLIST)item.lParam;
+            TCHAR szPath1[MAX_PATH], szPath2[MAX_PATH];
+            SHGetPathFromIDList(pidl, szPath1);
+            SHGetPathFromIDList(pidl, szPath2);
+            PathRemoveFileSpec(szPath2);
+
+            // 新しいパス名を構築する。拡張子が「.LNK」なら特別扱い。
+            if (lstrcmpi(PathFindExtension(szPath1), TEXT(".LNK")) == 0)
+            {
+                PathAppend(szPath2, pDispInfo->item.pszText);
+                PathAddExtension(szPath2, TEXT(".LNK"));
+                MoveFileEx(szPath1, szPath2, MOVEFILE_COPY_ALLOWED);
+            }
+            else
+            {
+                PathAppend(szPath2, pDispInfo->item.pszText);
+                MoveFileEx(szPath1, szPath2, MOVEFILE_COPY_ALLOWED);
+            }
+
+            // 古いPIDLを破棄する。
+            ILFree(pidl);
+
+            // アイコンを取得する。
+            SHFILEINFO info;
+            DWORD dwAttrs = (PathIsDirectory(szPath2) ? FILE_ATTRIBUTE_DIRECTORY : 0);
+            UINT uFlags = SHGFI_ICON | SHGFI_LARGEICON | SHGFI_USEFILEATTRIBUTES;
+            if (lstrcmpi(PathFindExtension(szPath2), TEXT(".LNK")) == 0)
+                uFlags |= SHGFI_LINKOVERLAY;
+            SHGetFileInfo(szPath2, dwAttrs, &info, sizeof(info), uFlags);
+
+            // 新しいPIDLをセット。アイコンをセット。
+            item.mask = LVIF_IMAGE | LVIF_PARAM;
+            item.iImage = ImageList_AddIcon(g_hImageList, info.hIcon);
+            item.lParam = (LPARAM)ILCreateFromPath(szPath2);
+            ListView_SetItem(g_hListView, &item);
+
+            // アイコンを破棄する。
+            ::DestroyIcon(info.hIcon);
+
+            // 名前の変更を完了する。
+            return TRUE;
+        }
+        break;
     }
 
     return 0;
@@ -1807,7 +1887,7 @@ static LRESULT OnShellChange(HWND hwnd, WPARAM wParam, LPARAM lParam)
     SHGetPathFromIDList(ppidlAbsolute[0], szPath);
     PathRemoveFileSpec(szPath);
 
-    if (lstrcmpi(szPath, g_root_dir) == 0)
+    if (lstrcmpi(szPath, g_root_dir) == 0) // 親ディレクトリがテンプレートフォルダなら
     {
         // パス名を取得する。
         SHGetPathFromIDList(ppidlAbsolute[0], szPath);
@@ -1823,6 +1903,7 @@ static LRESULT OnShellChange(HWND hwnd, WPARAM wParam, LPARAM lParam)
         LV_FINDINFO Find = { LVFI_STRING, szFileTitle };
         INT iItem = ListView_FindItem(g_hListView, -1, &Find);
 
+        // イベントの種類に応じて処理を行う。
         switch (lEvent)
         {
         case SHCNE_CREATE:
@@ -1830,7 +1911,7 @@ static LRESULT OnShellChange(HWND hwnd, WPARAM wParam, LPARAM lParam)
             // ファイルまたはフォルダの追加。FDTファイルは無視する。
             if (iItem == -1 && !templa_wildcard(pszFileName, L"*.fdt"))
             {
-                // アイコンインデックスを取得する。
+                // アイコンを取得する。
                 DWORD dwAttrs = ((lEvent == SHCNE_MKDIR) ? FILE_ATTRIBUTE_DIRECTORY : 0);
                 SHFILEINFO info;
                 UINT uFlags = SHGFI_ICON | SHGFI_LARGEICON | SHGFI_USEFILEATTRIBUTES;
