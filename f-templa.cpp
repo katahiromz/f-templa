@@ -1855,24 +1855,35 @@ static LRESULT OnNotify(HWND hwnd, int idFrom, LPNMHDR pnmhdr)
             TCHAR szPath1[MAX_PATH], szPath2[MAX_PATH];
             SHGetPathFromIDList(pidl, szPath1);
             SHGetPathFromIDList(pidl, szPath2);
-            PathRemoveFileSpec(szPath2);
 
-            // 新しいパス名を構築する。拡張子が「.LNK」なら特別扱い。
+            // 拡張子が「.LNK」なら特別扱い。
             if (lstrcmpi(PathFindExtension(szPath1), TEXT(".LNK")) == 0 &&
                 !PathIsDirectory(szPath1))
             {
+                // 新しいパス名を構築する。
+                PathRemoveFileSpec(szPath2);
                 PathAppend(szPath2, pDispInfo->item.pszText);
                 PathAddExtension(szPath2, TEXT(".LNK"));
+
+                // 変更前に変更通知を行う。
                 SHChangeNotify(SHCNE_RENAMEITEM, SHCNF_PATH, szPath1, szPath2);
+
+                // 名前を変更する。
                 MoveFileEx(szPath1, szPath2, MOVEFILE_COPY_ALLOWED);
             }
             else
             {
+                // 新しいパス名を構築する。
+                PathRemoveFileSpec(szPath2);
                 PathAppend(szPath2, pDispInfo->item.pszText);
+
+                // 変更前に変更通知を行う。
                 if (PathIsDirectory(szPath1))
                     SHChangeNotify(SHCNE_RENAMEFOLDER, SHCNF_PATH, szPath1, szPath2);
                 else
                     SHChangeNotify(SHCNE_RENAMEITEM, SHCNF_PATH, szPath1, szPath2);
+
+                // 名前を変更する。
                 MoveFileEx(szPath1, szPath2, MOVEFILE_COPY_ALLOWED);
             }
 
