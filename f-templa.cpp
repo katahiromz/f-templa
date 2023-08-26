@@ -1862,11 +1862,16 @@ static LRESULT OnNotify(HWND hwnd, int idFrom, LPNMHDR pnmhdr)
             {
                 PathAppend(szPath2, pDispInfo->item.pszText);
                 PathAddExtension(szPath2, TEXT(".LNK"));
+                SHChangeNotify(SHCNE_RENAMEITEM, SHCNF_PATH, szPath1, szPath2);
                 MoveFileEx(szPath1, szPath2, MOVEFILE_COPY_ALLOWED);
             }
             else
             {
                 PathAppend(szPath2, pDispInfo->item.pszText);
+                if (PathIsDirectory(szPath1))
+                    SHChangeNotify(SHCNE_RENAMEFOLDER, SHCNF_PATH, szPath1, szPath2);
+                else
+                    SHChangeNotify(SHCNE_RENAMEITEM, SHCNF_PATH, szPath1, szPath2);
                 MoveFileEx(szPath1, szPath2, MOVEFILE_COPY_ALLOWED);
             }
 
