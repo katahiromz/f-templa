@@ -1858,7 +1858,8 @@ static LRESULT OnNotify(HWND hwnd, int idFrom, LPNMHDR pnmhdr)
             PathRemoveFileSpec(szPath2);
 
             // 新しいパス名を構築する。拡張子が「.LNK」なら特別扱い。
-            if (lstrcmpi(PathFindExtension(szPath1), TEXT(".LNK")) == 0)
+            if (lstrcmpi(PathFindExtension(szPath1), TEXT(".LNK")) == 0 &&
+                !PathIsDirectory(szPath1))
             {
                 PathAppend(szPath2, pDispInfo->item.pszText);
                 PathAddExtension(szPath2, TEXT(".LNK"));
