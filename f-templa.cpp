@@ -614,6 +614,7 @@ static void Dialog2_OnPreset(HWND hwnd)
     // メニューに区分線を追加する。
     ::AppendMenu(hMenu, MF_SEPARATOR, 0, NULL);
 
+    // 「:」で始まらないセクション名を取得する。
     string_list_t section_names;
     for (auto& pair : fdt_file.name2section)
     {
@@ -710,11 +711,14 @@ static void Dialog2_OnPreset(HWND hwnd)
         break;
 
     case ID_RESET:
+        // 設定ファイルを削除。
         ::DeleteFile(path.c_str());
+        // 置き換え項目の設定を初期化。
         Dialog2_InitSubst(hwnd, iItem);
         break;
 
     case ID_UPDATEVALUE:
+        // 値を更新する。
         {
             mapping_t mapping = DoGetMapping();
 
@@ -758,13 +762,17 @@ static void Dialog2_OnDownArrow(HWND hwnd, INT id)
     INT index = id - IDC_DARROW_00;
     UINT nEditFromID = IDC_FROM_00 + index;
     UINT nEditToID = IDC_TO_00 + index;
+
+    // 押されたボタンのウィンドウ領域を取得する。
     RECT rc;
     ::GetWindowRect(GetDlgItem(hwnd, id), &rc);
 
+    // キーのテキストを取得し、前後の空白を削除。
     TCHAR szKey[128];
     ::GetDlgItemText(hwnd, nEditFromID, szKey, _countof(szKey));
     StrTrim(szKey, TEXT(" \t\r\n\x3000"));
 
+    // 値のテキストを取得し、前後の空白を削除。
     TCHAR szValue[1024];
     ::GetDlgItemText(hwnd, nEditToID, szValue, _countof(szValue));
     StrTrim(szValue, TEXT(" \t\r\n\x3000"));
@@ -779,9 +787,12 @@ static void Dialog2_OnDownArrow(HWND hwnd, INT id)
         }
     }
 
+    // 新しいポップアップメニューを作成する。
     HMENU hMenu = CreatePopupMenu();
 
+    // 「値の更新」項目の追加。
     ::AppendMenu(hMenu, MF_STRING, ID_UPDATEVALUE, doLoadStr(IDS_UPDATEVALUE));
+    // 「リセット」項目の追加。
     ::AppendMenu(hMenu, MF_STRING, ID_RESET, doLoadStr(IDS_RESET));
 
     const INT c_history_first = 1000;
@@ -811,32 +822,62 @@ static void Dialog2_OnDownArrow(HWND hwnd, INT id)
             ::AppendMenu(hMenu, MF_STRING, ID_ADDITEM, szItem);
         }
 
+        // 区分線を追加。
         ::AppendMenu(hMenu, MF_SEPARATOR, 0, L"");
+        // 「キーと値の削除」項目を追加。
         ::AppendMenu(hMenu, MF_STRING, ID_DELETEKEYANDVALUE, doLoadStr(IDS_DELETEKEYVALUE));
     }
 
+    // ポップアップメニューを表示し、メニュー項目の選択を待つ。
     INT iChoice = ::TrackPopupMenu(hMenu, TPM_RETURNCMD | TPM_LEFTALIGN | TPM_LEFTBUTTON,
                                    rc.right, rc.top, 0, hwnd, &rc);
+    // メニューを破棄する。
     ::DestroyMenu(hMenu);
-    if (iChoice != 0)
+
+    // 選択が無効なら終了。
+    if (iChoice == 0)
+        return;
+
+    if (iChoice >= c_history_first)
     {
-        if (iChoice >= c_history_first)
+        HWND hwndEdit = ::GetDlgItem(hwnd, nEditToID);
+        assert(hwndEdit);
+        ::SetWindowText(hwndEdit, strs[iChoice - c_history_first].c_str());
+        Edit_SetSel(hwndEdit, 0, -1);
+        SetFocus(hwndEdit);
+    }
+    else if (iChoice == ID_ADDITEM) // 「項目の追加」
+    {
+        g_history.push_back(std::make_pair(szKey, szValue));
+    }
+    else if (iChoice == ID_UPDATEVALUE) // 「値の更新」
+    {
+        std::pair<string_t, string_t> pair;
+        pair.first = szKey;
+        pair.second = szValue;
+        UpdateValue(pair.first, pair.second);
+
+        HWND hwndEdit = ::GetDlgItem(hwnd, nEditToID);
+        assert(hwndEdit);
+        ::SetWindowText(hwndEdit, pair.second.c_str());
+        Edit_SetSel(hwndEdit, 0, -1);
+        SetFocus(hwndEdit);
+    }
+    else if (iChoice == ID_RESET || iChoice == ID_DELETEKEYANDVALUE)
+    {
+        INT iItem = ListView_GetNextItem(g_hListView, -1, LVNI_SELECTED);
+        if (iItem == -1)
+            return;
+
+        if (iChoice == ID_DELETEKEYANDVALUE)
         {
-            HWND hwndEdit = ::GetDlgItem(hwnd, nEditToID);
-            assert(hwndEdit);
-            ::SetWindowText(hwndEdit, strs[iChoice - c_history_first].c_str());
-            Edit_SetSel(hwndEdit, 0, -1);
-            SetFocus(hwndEdit);
+            ::SetDlgItemText(hwnd, nEditFromID, NULL);
+            ::SetDlgItemText(hwnd, nEditToID, NULL);
         }
-        else if (iChoice == ID_ADDITEM)
-        {
-            g_history.push_back(std::make_pair(szKey, szValue));
-        }
-        else if (iChoice == ID_UPDATEVALUE)
+        else if (iChoice == ID_RESET)
         {
             std::pair<string_t, string_t> pair;
             pair.first = szKey;
-            pair.second = szValue;
             UpdateValue(pair.first, pair.second);
 
             HWND hwndEdit = ::GetDlgItem(hwnd, nEditToID);
@@ -845,61 +886,37 @@ static void Dialog2_OnDownArrow(HWND hwnd, INT id)
             Edit_SetSel(hwndEdit, 0, -1);
             SetFocus(hwndEdit);
         }
-        else if (iChoice == ID_RESET || iChoice == ID_DELETEKEYANDVALUE)
+
+        LV_ITEM item = { LVIF_PARAM, iItem };
+        ListView_GetItem(g_hListView, &item);
+        TCHAR szPath[MAX_PATH];
+        auto pidl = (LPITEMIDLIST)item.lParam;
+        SHGetPathFromIDList(pidl, szPath);
+
+        string_t path = szPath;
+        path += L".fdt";
+
+        FDT_FILE fdt_file;
+        if (fdt_file.load(path.c_str()))
         {
-            INT iItem = ListView_GetNextItem(g_hListView, -1, LVNI_SELECTED);
-            if (iItem == -1)
-                return;
-
-            if (iChoice == ID_DELETEKEYANDVALUE)
+            for (auto& pair : fdt_file.name2section)
             {
-                ::SetDlgItemText(hwnd, nEditFromID, NULL);
-                ::SetDlgItemText(hwnd, nEditToID, NULL);
-            }
-            else if (iChoice == ID_RESET)
-            {
-                std::pair<string_t, string_t> pair;
-                pair.first = szKey;
-                UpdateValue(pair.first, pair.second);
+                auto& section = pair.second;
+                section.erase(szKey);
 
-                HWND hwndEdit = ::GetDlgItem(hwnd, nEditToID);
-                assert(hwndEdit);
-                ::SetWindowText(hwndEdit, pair.second.c_str());
-                Edit_SetSel(hwndEdit, 0, -1);
-                SetFocus(hwndEdit);
-            }
-
-            LV_ITEM item = { LVIF_PARAM, iItem };
-            ListView_GetItem(g_hListView, &item);
-            TCHAR szPath[MAX_PATH];
-            auto pidl = (LPITEMIDLIST)item.lParam;
-            SHGetPathFromIDList(pidl, szPath);
-
-            string_t path = szPath;
-            path += L".fdt";
-
-            FDT_FILE fdt_file;
-            if (fdt_file.load(path.c_str()))
-            {
-                for (auto& pair : fdt_file.name2section)
+                if (iChoice == ID_RESET)
                 {
-                    auto& section = pair.second;
-                    section.erase(szKey);
-
-                    if (iChoice == ID_RESET)
-                    {
-                        section.assign(szKey, szValue);
-                    }
+                    section.assign(szKey, szValue);
                 }
-                fdt_file.save(path.c_str());
             }
+            fdt_file.save(path.c_str());
+        }
 
-            for (size_t i = g_history.size() - 1; i < g_history.size(); --i)
+        for (size_t i = g_history.size() - 1; i < g_history.size(); --i)
+        {
+            if (g_history[i].first == szKey)
             {
-                if (g_history[i].first == szKey)
-                {
-                    g_history.erase(g_history.begin() + i);
-                }
+                g_history.erase(g_history.begin() + i);
             }
         }
     }
@@ -954,6 +971,7 @@ static void Dialog2_OnVScroll(HWND hwnd, HWND hwndCtl, UINT code, int pos)
 // WM_MOUSEWHEEL - ダイアログ2でマウスホイールが回転した。
 static void Dialog2_OnMouseWheel(HWND hwnd, int xPos, int yPos, int zDelta, UINT fwKeys)
 {
+    // WM_VSCROLLメッセージで縦スクロールする。
     if (zDelta > 0)
     {
         for (INT i = 0; i < 3; ++i)
@@ -969,6 +987,7 @@ static void Dialog2_OnMouseWheel(HWND hwnd, int xPos, int yPos, int zDelta, UINT
 // WM_SIZE - ダイアログ2のサイズ変更。
 void Dialog2_OnSize(HWND hwnd, UINT state, int cx, int cy)
 {
+    // スクロールビューのサイズ変更。
     ScrollView_OnSize(&g_Dialog2ScrollView, state, cx, cy);
 }
 
@@ -1082,26 +1101,37 @@ static BOOL OnCreate(HWND hwnd, LPCREATESTRUCT lpCreateStruct)
 // WM_ACTIVATE - メインウィンドウがアクティブになった。
 static void OnActivate(HWND hwnd, UINT state, HWND hwndActDeact, BOOL fMinimized)
 {
+    // リストビューにフォーカスを置く。
     ::SetFocus(g_hListView);
 }
 
 // WM_SIZE - メインウィンドウのサイズが変更された。
 static void OnSize(HWND hwnd, UINT state, int cx, int cy)
 {
+    // 現在のダイアログの位置とサイズを取得する。
     RECT rc;
     ::GetWindowRect(g_hwndDialogs[g_iDialog], &rc);
     INT cxDialog = rc.right - rc.left;
+
+    // ステータスバーの位置とサイズを取得する。
     ::SendMessage(g_hStatusBar, WM_SIZE, 0, 0);
     ::GetWindowRect(g_hStatusBar, &rc);
     INT cyStatusBar = rc.bottom - rc.top;
 
+    // メインウィンドウのクライアント領域を取得する。
     ::GetClientRect(hwnd, &rc);
 
+    // 領域からステータスバーの高さを除外する。
     rc.bottom -= cyStatusBar;
-    INT cyDialog = rc.bottom - rc.top;
 
+    // 現在のダイアログの位置とサイズを指定する。
+    INT cyDialog = rc.bottom - rc.top;
     ::MoveWindow(g_hwndDialogs[g_iDialog], 0, 0, cxDialog, cyDialog, TRUE);
+
+    // 領域から現在のダイアログの幅を除外する。
     rc.left += cxDialog;
+
+    // リストビューの位置とサイズを指定する。
     ::MoveWindow(g_hListView, rc.left, rc.top, rc.right - rc.left, rc.bottom - rc.top, TRUE);
 
     // 最小化または最大化されているときは無視する。
