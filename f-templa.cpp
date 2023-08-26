@@ -1181,7 +1181,7 @@ BOOL ShowContextMenu(HWND hwnd, INT iItem, INT xPos, INT yPos, UINT uFlags = CMF
     HMENU hMenu = CreatePopupMenu();
     UINT nID;
 
-    if (iItem == -1)
+    if (iItem == -1) // 選択項目がなければ、テンプレートフォルダを使用する。
     {
         StringCchCopy(szPath, _countof(szPath), g_root_dir);
     }
