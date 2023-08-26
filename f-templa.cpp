@@ -1809,6 +1809,7 @@ static LRESULT OnShellChange(HWND hwnd, WPARAM wParam, LPARAM lParam)
 
     if (lstrcmpi(szPath, g_root_dir) == 0)
     {
+        // パス名を取得する。
         SHGetPathFromIDList(ppidlAbsolute[0], szPath);
         LPTSTR pszFileName = PathFindFileName(szPath);
 
@@ -1818,6 +1819,7 @@ static LRESULT OnShellChange(HWND hwnd, WPARAM wParam, LPARAM lParam)
         if (lstrcmpi(PathFindExtension(szFileTitle), TEXT(".LNK")) == 0)
             PathRemoveExtension(szFileTitle);
 
+        // ファイルタイトルで項目を検索する。
         LV_FINDINFO Find = { LVFI_STRING, szFileTitle };
         INT iItem = ListView_FindItem(g_hListView, -1, &Find);
 
@@ -1863,12 +1865,33 @@ static LRESULT OnShellChange(HWND hwnd, WPARAM wParam, LPARAM lParam)
         case SHCNE_RENAMEITEM:
             // ファイルまたはフォルダの名前変更。
             {
+                // パス名を取得する。
                 SHGetPathFromIDList(ppidlAbsolute[1], szPath);
-                string_t filename = PathFindFileName(szPath);
-                if (templa_wildcard(filename, L"*.fdt")) // FDTファイルは無視する。
+
+                // FDTファイルは無視する。
+                if (templa_wildcard(PathFindFileName(szPath), L"*.fdt"))
+                {
                     ListView_DeleteItem(g_hListView, iItem);
-                else // さもなければ項目名を更新する。
-                    ListView_SetItemText(g_hListView, iItem, 0, &filename[0]);
+                }
+                else
+                {
+                    // 拡張子が「.LNK」なら拡張子を表示しない。
+                    LPTSTR pszFileTitle = PathFindFileName(szPath);
+                    if (lstrcmpi(PathFindExtension(pszFileTitle), TEXT(".LNK")) == 0)
+                        PathRemoveExtension(pszFileTitle);
+
+                    // 項目名を更新する。
+                    ListView_SetItemText(g_hListView, iItem, 0, pszFileTitle);
+
+                    // 古いPIDLを破棄する。
+                    LV_ITEM item = { LVIF_PARAM, iItem };
+                    ListView_GetItem(g_hListView, &item);
+                    ILFree((LPITEMIDLIST)item.lParam);
+
+                    // PIDLを更新する。
+                    item.lParam = (LPARAM)ILClone(ppidlAbsolute[1]);
+                    ListView_SetItem(g_hListView, &item);
+                }
             }
             break;
         }
@@ -1893,6 +1916,7 @@ void OnMove(HWND hwnd, int x, int y)
     g_ptWnd.y = rc.top;
 }
 
+// ウィンドウプロシージャ。
 LRESULT CALLBACK
 WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
